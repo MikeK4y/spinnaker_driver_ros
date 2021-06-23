@@ -12,7 +12,7 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
     camera_pointer = camera_list.GetBySerial(camera_serial);
 
   } catch (const Spinnaker::Exception& e) {
-    std::cerr << "Could not found a camera with serial " << camera_serial
+    std::cerr << "Could not find a camera with serial " << camera_serial
               << ". Error: " << e.what() << '\n';
     return false;
   }

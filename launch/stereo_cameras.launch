@@ -1,0 +1,5 @@
+<launch>
+  <node name="camera_manager_node" pkg="spinnaker_driver_ros" type="camera_manager_node" output="screen" required="true">
+    <rosparam command="load" file="$(find spinnaker_driver_ros)/cfg/stereo_config.yaml"/>
+  </node>
+</launch>

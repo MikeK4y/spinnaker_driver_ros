@@ -12,20 +12,20 @@ StereoCameraManagerNode::StereoCameraManagerNode(
   if (camera_list.GetSize() < 2) {
     ROS_ERROR("At least two cameras need to be connected. Cameras found = %d",
               camera_list.GetSize());
-    exit(-1);
+    // exit(-1);
   }
 
   // Load parameters from ROS
   loadParameters();
 
   // Connect to cameras
-  l_camera->setSerial(l_cam_serial);
-  r_camera->setSerial(r_cam_serial);
+  l_camera = new SpinnakerCamera(l_cam_serial);
+  r_camera = new SpinnakerCamera(r_cam_serial);
 
   if (!l_camera->connect(camera_list) || !r_camera->connect(camera_list)) {
     ROS_ERROR(
         "Could not connect to the cameras with the provided serial numbers");
-    exit(-1);
+    // exit(-1);
   }
 
   // Initialize cameras
@@ -34,7 +34,7 @@ StereoCameraManagerNode::StereoCameraManagerNode(
 
   if (!l_camera->startAcquisition() || !r_camera->startAcquisition()) {
     ROS_ERROR("Could not start frame acquisition");
-    exit(-1);
+    // exit(-1);
   }
 
   // Setup Publishers
@@ -48,28 +48,28 @@ StereoCameraManagerNode::StereoCameraManagerNode(
   ros::Publisher r_cam_info_pub =
       nh.advertise<sensor_msgs::CameraInfo>("right_camera/camera_info", 1);
 
-  // publishImage(*l_camera);
-
-  l_cam_worker =
-      std::thread(&StereoCameraManagerNode::publishImage, this,
-                  std::ref(*l_camera), l_image_pub);  //, l_image_pub, l_cam_info_pub);
-  // r_cam_worker = std::thread(&StereoCameraManagerNode::publishImage, this,
-  //                            *r_camera, r_image_pub, r_cam_info_pub);
+  l_cam_worker = std::thread(&StereoCameraManagerNode::publishImage, this,
+                             std::ref(*l_camera), l_image_pub);
+  r_cam_worker = std::thread(&StereoCameraManagerNode::publishImage, this,
+                             std::ref(*r_camera), r_image_pub);
 }
 
 StereoCameraManagerNode::~StereoCameraManagerNode() {
-  // Clear camera list before releasing system
+  delete l_camera, r_camera;
   camera_list.Clear();
-
-  // Release system
   system->ReleaseInstance();
 }
 
 void StereoCameraManagerNode::loadParameters() {
   ros::NodeHandle nh_lcl("~");
 
-  nh_lcl.param("left_camera_serial", l_cam_serial, std::string("01234567"));
-  nh_lcl.param("right_camera_serial", r_cam_serial, std::string("01234567"));
+  int l_serial, r_serial;
+
+  nh_lcl.param("left_camera_serial", l_serial, 01234567);
+  nh_lcl.param("right_camera_serial", r_serial, 01234567);
+
+  l_cam_serial = std::to_string(l_serial);
+  r_cam_serial = std::to_string(r_serial);
 }
 
 void StereoCameraManagerNode::publishImage(

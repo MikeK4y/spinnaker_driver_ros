@@ -19,6 +19,9 @@ class SpinnakerCamera {
   void setSerial(std::string serial) { camera_serial = serial; }
 
   /** @brief Establishes connection to the camera specified by the serial number
+   * Also, it initializes the camera by setting the Auto Exposure to Off,
+   * the buffer handling to newest, acquisition mode to continuous and
+   * enbale frame rate control
    * @param camera_list List of available cameras
    * @returns True if successful
    **/
@@ -30,9 +33,11 @@ class SpinnakerCamera {
   bool disconnect();
 
   /** @brief Configures the camera.
+   * @param exposure Exposure time
+   * @param fps Frame rate
    * @returns True if successful
    **/
-  bool configure();
+  bool configure(double exposure, double fps);
 
   /** @brief Returns the Camera Serial Number
    * @returns Camera Serial Number
@@ -41,6 +46,7 @@ class SpinnakerCamera {
 
   /** @brief Grabs any available image from the camera buffer
    * TODO: Instead of using an OpenCV Mat for the image use a sensor_msgs::Image
+   * TODO: Pass a string with the path to save the image
    * @param frame A pointer to an OpenCV Mat of the frame
    * @param time_stamp A pointer to the time stamp in msec
    * @returns True if successful

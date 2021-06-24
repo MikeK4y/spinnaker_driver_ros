@@ -9,11 +9,13 @@
 #include "Spinnaker.h"
 
 // ROS
+#include <dynamic_reconfigure/server.h>
 #include <ros/ros.h>
 
 #include "camera_info_manager/camera_info_manager.h"
 #include "cv_bridge/cv_bridge.h"
 #include "image_transport/image_transport.h"
+#include "spinnaker_driver_ros/stereoCameraParametersConfig.h"
 
 // ROS messages
 #include "sensor_msgs/image_encodings.h"
@@ -23,6 +25,7 @@
 
 class StereoCameraManagerNode {
  public:
+  /** TODO: Add exceptions to stop constructor if something's not right */
   StereoCameraManagerNode(ros::NodeHandle &nh,
                           image_transport::ImageTransport &image_t);
   ~StereoCameraManagerNode();
@@ -35,7 +38,8 @@ class StereoCameraManagerNode {
   void loadParameters();
 
   /** @brief Grabs the image from the camera and publishes it along with the
-   * camera information
+   * camera information TODO: Setup the camera info publisher and the config
+   * mutex
    * @param camera The Spinnaker camera to grab the image from
    * @param image_pub The publisher for the image
    * @param camera_info_pub The publisher for the camera information
@@ -43,7 +47,17 @@ class StereoCameraManagerNode {
    */
   void publishImage(SpinnakerCamera &camera,
                     image_transport::Publisher image_pub);
-  // ros::Publisher camera_info_pub);
+
+  /** @brief Callback for the dynamic reconfigure server
+   */
+  void dynamicReconfigureCallback(
+      spinnaker_driver_ros::stereoCameraParametersConfig &config,
+      uint32_t level);
+
+  // Dynamic Reconfigure Server
+  dynamic_reconfigure::Server<
+      spinnaker_driver_ros::stereoCameraParametersConfig>
+      config_server;
 
   // Spinnaker handles
   Spinnaker::SystemPtr system;

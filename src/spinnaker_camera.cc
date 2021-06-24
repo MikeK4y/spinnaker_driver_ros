@@ -29,6 +29,24 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
     return false;
   }
 
+  // Setup some basic configuration
+  std::string stream_buffer_handling_mode = "NewestOnly";
+  std::string acquisition_mode = "Continuous";
+  std::string exposure_auto_mode = "Off";
+
+  if (setFeature(stream_node_map, "StreamBufferHandlingMode",
+                 stream_buffer_handling_mode))
+    std::cout << "Stream buffer handling mode set to Newest Only\n";
+
+  if (setFeature(node_map, "AcquisitionMode", acquisition_mode))
+    std::cout << "Acquisition mode set to continuous\n";
+
+  if (setFeature(node_map, "ExposureAuto", exposure_auto_mode))
+    std::cout << "Auto Exposure set to off\n";
+
+  if (setFeature(node_map, "AcquisitionFrameRateEnable", true))
+    std::cout << "Enabled Frame Rate Control\n";
+
   return camera_pointer->IsInitialized();
 }
 
@@ -45,28 +63,9 @@ bool SpinnakerCamera::disconnect() {
   return true;
 }
 
-bool SpinnakerCamera::configure() {
-  std::string stream_buffer_handling_mode = "NewestOnly";
-  std::string acquisition_mode = "Continuous";
-  std::string exposure_auto_mode = "Off";
-  double exposure = 500.0;
-  double fps = 2.0;
-
-  if (setFeature(stream_node_map, "StreamBufferHandlingMode",
-                 stream_buffer_handling_mode))
-    std::cout << "Stream buffer handling mode set to Newest Only\n";
-
-  if (setFeature(node_map, "AcquisitionMode", acquisition_mode))
-    std::cout << "Acquisition mode set to continuous\n";
-
-  if (setFeature(node_map, "ExposureAuto", exposure_auto_mode))
-    std::cout << "Auto Exposure set to off\n";
-
+bool SpinnakerCamera::configure(double exposure, double fps) {
   if (setFeature(node_map, "ExposureTime", exposure))
     std::cout << "Exposure time set to " << exposure << "\n";
-
-  if (setFeature(node_map, "AcquisitionFrameRateEnable", true))
-    std::cout << "Enabled Frame Rate Control\n";
 
   if (setFeature(node_map, "AcquisitionFrameRate", fps))
     std::cout << "Frame rate set to " << fps << "fps\n";

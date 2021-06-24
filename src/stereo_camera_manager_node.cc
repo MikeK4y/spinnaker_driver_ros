@@ -12,7 +12,6 @@ StereoCameraManagerNode::StereoCameraManagerNode(
   if (camera_list.GetSize() < 2) {
     ROS_ERROR("At least two cameras need to be connected. Cameras found = %d",
               camera_list.GetSize());
-    // exit(-1);
   }
 
   // Load parameters from ROS
@@ -25,17 +24,22 @@ StereoCameraManagerNode::StereoCameraManagerNode(
   if (!l_camera->connect(camera_list) || !r_camera->connect(camera_list)) {
     ROS_ERROR(
         "Could not connect to the cameras with the provided serial numbers");
-    // exit(-1);
   }
 
   // Initialize cameras
-  l_camera->configure();
-  r_camera->configure();
+  l_camera->configure(1000.0, 10.0);
+  r_camera->configure(1000.0, 10.0);
 
   if (!l_camera->startAcquisition() || !r_camera->startAcquisition()) {
     ROS_ERROR("Could not start frame acquisition");
-    // exit(-1);
   }
+
+  // Setup Dynamic Reconfigure Server
+  dynamic_reconfigure::Server<
+      spinnaker_driver_ros::stereoCameraParametersConfig>::CallbackType
+      config_cb = boost::bind(
+          &StereoCameraManagerNode::dynamicReconfigureCallback, this, _1, _2);
+  config_server.setCallback(config_cb);
 
   // Setup Publishers
   image_transport::Publisher l_image_pub =
@@ -94,4 +98,11 @@ void StereoCameraManagerNode::publishImage(
       ROS_WARN("Did not received a frame! Trying again");
     }
   }
+}
+
+void StereoCameraManagerNode::dynamicReconfigureCallback(
+    spinnaker_driver_ros::stereoCameraParametersConfig &config,
+    uint32_t level) {
+  l_camera->configure(config.exposure_time, config.fps);
+  r_camera->configure(config.exposure_time, config.fps);
 }

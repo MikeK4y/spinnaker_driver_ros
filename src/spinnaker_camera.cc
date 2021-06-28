@@ -5,7 +5,10 @@
 SpinnakerCamera::SpinnakerCamera(std::string serial)
     : acquisition_started(false), camera_serial(serial), frame_counter(0) {}
 
-SpinnakerCamera::~SpinnakerCamera() {}
+SpinnakerCamera::~SpinnakerCamera() {
+  camera_pointer->DeInit();
+  delete camera_pointer;
+}
 
 bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
   try {
@@ -33,6 +36,7 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
   std::string stream_buffer_handling_mode = "NewestOnly";
   std::string acquisition_mode = "Continuous";
   std::string exposure_auto_mode = "Off";
+  std::string gain_auto_mode = "Off";
 
   if (setFeature(stream_node_map, "StreamBufferHandlingMode",
                  stream_buffer_handling_mode))
@@ -43,6 +47,9 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
 
   if (setFeature(node_map, "ExposureAuto", exposure_auto_mode))
     std::cout << "Auto Exposure set to off\n";
+
+  if (setFeature(node_map, "GainAuto", gain_auto_mode))
+    std::cout << "Auto Gain set to off\n";
 
   if (setFeature(node_map, "AcquisitionFrameRateEnable", true))
     std::cout << "Enabled Frame Rate Control\n";
@@ -63,9 +70,12 @@ bool SpinnakerCamera::disconnect() {
   return true;
 }
 
-bool SpinnakerCamera::configure(double exposure, double fps) {
+bool SpinnakerCamera::configure(double exposure, double gain, double fps) {
   if (setFeature(node_map, "ExposureTime", exposure))
     std::cout << "Exposure time set to " << exposure << "\n";
+
+  if (setFeature(node_map, "Gain", gain))
+    std::cout << "Gain set to " << gain << "\n";
 
   if (setFeature(node_map, "AcquisitionFrameRate", fps))
     std::cout << "Frame rate set to " << fps << "fps\n";
@@ -73,7 +83,8 @@ bool SpinnakerCamera::configure(double exposure, double fps) {
   return true;
 }
 
-bool SpinnakerCamera::grabFrame(cv::Mat& frame, uint64_t& time_stamp) {
+bool SpinnakerCamera::grabFrame(sensor_msgs::Image& frame,
+                                std::string& file_name) {
   if (acquisition_started) {
     try {
       Spinnaker::ImagePtr spin_image_raw = camera_pointer->GetNextImage(1000);
@@ -83,15 +94,20 @@ bool SpinnakerCamera::grabFrame(cv::Mat& frame, uint64_t& time_stamp) {
         return false;
       } else {
         // Get timestamp and make sure the pixel depth is 8bit
-        time_stamp = spin_image_raw->GetTimeStamp();
+        double time_stamp = spin_image_raw->GetTimeStamp();
         size_t bits_per_pixel = spin_image_raw->GetBitsPerPixel();
 
         if (bits_per_pixel == 8) {
-          // Convert to CV Mat
-          frame = cv::Mat(
-              spin_image_raw->GetHeight() + spin_image_raw->GetYPadding(),
-              spin_image_raw->GetWidth() + spin_image_raw->GetXPadding(),
-              CV_8UC1, spin_image_raw->GetData(), spin_image_raw->GetStride());
+          // Convert to sensor_msg::Image
+          frame.width =
+              spin_image_raw->GetWidth() + spin_image_raw->GetXPadding();
+          frame.height =
+              spin_image_raw->GetHeight() + spin_image_raw->GetYPadding();
+          frame.step = spin_image_raw->GetStride();
+          frame.encoding = "mono8";
+          size_t data_size = frame.height * frame.step;
+          frame.data.resize(data_size);
+          memcpy(&frame.data[0], spin_image_raw->GetData(), data_size);
         } else {
           std::cerr << "Image depth = " << bits_per_pixel << " bits.\n";
           return false;

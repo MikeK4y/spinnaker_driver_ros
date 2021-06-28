@@ -15,9 +15,6 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
 )
 
-## Find OpenCV
-# find_package(OpenCV REQUIRED)
-
 # Spinnaker drivers for Ubuntu 20.04 need to be installed
 # Available here: https://www.flir.com/products/spinnaker-sdk/
 set(Spinnaker_INCLUDE_DIRS "/opt/spinnaker/include")
@@ -48,7 +45,6 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  # ${OpenCV_INCLUDE_DIRS}
   ${Spinnaker_INCLUDE_DIRS}
 )
 
@@ -70,13 +66,12 @@ add_dependencies(camera_manager_node
 
 ## Linking
 target_link_libraries(spinnaker_camera
+  ${catkin_LIBRARIES}
   ${Spinnaker_LIBS}
-  # ${OpenCV_LIBS}
 )
 
 target_link_libraries(camera_manager_node
   ${catkin_LIBRARIES}
   ${Spinnaker_LIBS}
-  # ${OpenCV_LIBS}
   spinnaker_camera
  )

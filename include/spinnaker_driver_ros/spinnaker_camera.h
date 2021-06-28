@@ -4,8 +4,8 @@
 #include "SpinGenApi/SpinnakerGenApi.h"
 #include "Spinnaker.h"
 
-// OpenCV
-#include "opencv2/opencv.hpp"
+// ROS
+#include "image_transport/image_transport.h"
 
 class SpinnakerCamera {
  public:
@@ -19,9 +19,9 @@ class SpinnakerCamera {
   void setSerial(std::string serial) { camera_serial = serial; }
 
   /** @brief Establishes connection to the camera specified by the serial number
-   * Also, it initializes the camera by setting the Auto Exposure to Off,
-   * the buffer handling to newest, acquisition mode to continuous and
-   * enbale frame rate control
+   * Also, it initializes the camera by setting the auto exposure to off, auto
+   * gain to off, the buffer handling to newest, acquisition mode to continuous
+   * and enbale frame rate control
    * @param camera_list List of available cameras
    * @returns True if successful
    **/
@@ -34,10 +34,11 @@ class SpinnakerCamera {
 
   /** @brief Configures the camera.
    * @param exposure Exposure time
+   * @param gain Gain
    * @param fps Frame rate
    * @returns True if successful
    **/
-  bool configure(double exposure, double fps);
+  bool configure(double exposure, double gain, double fps);
 
   /** @brief Returns the Camera Serial Number
    * @returns Camera Serial Number
@@ -45,13 +46,11 @@ class SpinnakerCamera {
   std::string getSerial() const { return camera_serial; }
 
   /** @brief Grabs any available image from the camera buffer
-   * TODO: Instead of using an OpenCV Mat for the image use a sensor_msgs::Image
-   * TODO: Pass a string with the path to save the image
    * @param frame A pointer to an OpenCV Mat of the frame
-   * @param time_stamp A pointer to the time stamp in msec
+   * @param file_name File name with full path to save the captured frame
    * @returns True if successful
    **/
-  bool grabFrame(cv::Mat& frame, uint64_t& time_stamp);
+  bool grabFrame(sensor_msgs::Image& frame, std::string& file_name);
 
   /** @brief Starts the camera acquisition
    * @returns True if successful
@@ -62,6 +61,8 @@ class SpinnakerCamera {
    * @returns True if successful
    **/
   bool stopAcquisition();
+
+  bool getAcquisition() const { return acquisition_started; }
 
  private:
   // Spinnaker handle for camera

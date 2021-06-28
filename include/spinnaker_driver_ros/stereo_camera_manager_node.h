@@ -3,6 +3,7 @@
 #include <functional>
 #include <mutex>
 #include <thread>
+#include <future>
 
 // Spinnaker
 #include "SpinGenApi/SpinnakerGenApi.h"

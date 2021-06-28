@@ -27,10 +27,21 @@ StereoCameraManagerNode::StereoCameraManagerNode(
   }
 
   // Initialize cameras
-  l_camera->configure(1000.0, 10.0);
-  r_camera->configure(1000.0, 10.0);
+  l_camera->configure(1000.0, 0.0, 1.0);
+  r_camera->configure(1000.0, 0.0, 1.0);
 
-  if (!l_camera->startAcquisition() || !r_camera->startAcquisition()) {
+  {  // Use async to start capturing as much in sync as possible
+    auto l_acq = std::async(std::launch::async,
+                            [this] { this->l_camera->startAcquisition(); });
+    auto r_acq = std::async(std::launch::async,
+                            [this]() { this->r_camera->startAcquisition(); });
+  }
+
+  if (l_camera->getAcquisition()) std::cout << "Left camera connected\n";
+
+  if (r_camera->getAcquisition()) std::cout << "Right camera connected\n";
+
+  if (!l_camera->getAcquisition() || !r_camera->getAcquisition()) {
     ROS_ERROR("Could not start frame acquisition");
   }
 
@@ -79,21 +90,10 @@ void StereoCameraManagerNode::loadParameters() {
 void StereoCameraManagerNode::publishImage(
     SpinnakerCamera &camera, image_transport::Publisher image_pub) {
   while (ros::ok()) {
-    cv::Mat cap;
-    uint64_t time_stamp;
-    if (camera.grabFrame(cap, time_stamp)) {
-      cv_bridge::CvImage ros_mat;
-      sensor_msgs::Image ros_image;
-
-      ros_mat.image = cap;
-      ros_mat.header.stamp.sec = time_stamp;
-      ros_mat.header.stamp.nsec = time_stamp * 1e-9;
-      ros_mat.encoding = "mono8";
-      // TODO: Add header.frame_id
-
-      ros_mat.toImageMsg(ros_image);
-
-      image_pub.publish(ros_image);
+    sensor_msgs::Image cap;
+    std::string file_path = "some_path";
+    if (camera.grabFrame(cap, file_path)) {
+      image_pub.publish(cap);
     } else {
       ROS_WARN("Did not received a frame! Trying again");
     }
@@ -103,6 +103,6 @@ void StereoCameraManagerNode::publishImage(
 void StereoCameraManagerNode::dynamicReconfigureCallback(
     spinnaker_driver_ros::stereoCameraParametersConfig &config,
     uint32_t level) {
-  l_camera->configure(config.exposure_time, config.fps);
-  r_camera->configure(config.exposure_time, config.fps);
+  l_camera->configure(config.exposure_time, config.gain, config.fps);
+  r_camera->configure(config.exposure_time, config.gain, config.fps);
 }

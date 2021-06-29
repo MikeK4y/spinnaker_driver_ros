@@ -7,7 +7,6 @@ add_compile_options(-std=c++11)
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
   camera_info_manager
-  cv_bridge
   dynamic_reconfigure
   image_transport
   roscpp
@@ -35,7 +34,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES spinnaker_driver_ros
- CATKIN_DEPENDS camera_info_manager cv_bridge dynamic_reconfigure image_transport roscpp rospy sensor_msgs
+ CATKIN_DEPENDS camera_info_manager dynamic_reconfigure image_transport roscpp rospy sensor_msgs
 )
 
 ###########

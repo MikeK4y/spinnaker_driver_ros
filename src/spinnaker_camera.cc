@@ -2,8 +2,11 @@
 
 #include "spinnaker_driver_ros/set_camera_feature.h"
 
-SpinnakerCamera::SpinnakerCamera(std::string serial)
-    : acquisition_started(false), camera_serial(serial), frame_counter(0) {}
+SpinnakerCamera::SpinnakerCamera(std::string serial, std::string id)
+    : acquisition_started(false),
+      camera_serial(serial),
+      camera_id(id),
+      save_image_flag(false) {}
 
 SpinnakerCamera::~SpinnakerCamera() {
   camera_pointer->DeInit();
@@ -83,47 +86,6 @@ bool SpinnakerCamera::configure(double exposure, double gain, double fps) {
   return true;
 }
 
-bool SpinnakerCamera::grabFrame(sensor_msgs::Image& frame,
-                                std::string& file_name) {
-  if (acquisition_started) {
-    try {
-      Spinnaker::ImagePtr spin_image_raw = camera_pointer->GetNextImage(1000);
-
-      if (spin_image_raw->IsIncomplete()) {
-        std::cerr << "Image was incomplete" << '\n';
-        return false;
-      } else {
-        // Get timestamp and make sure the pixel depth is 8bit
-        double time_stamp = spin_image_raw->GetTimeStamp();
-        size_t bits_per_pixel = spin_image_raw->GetBitsPerPixel();
-
-        if (bits_per_pixel == 8) {
-          // Convert to sensor_msg::Image
-          frame.width =
-              spin_image_raw->GetWidth() + spin_image_raw->GetXPadding();
-          frame.height =
-              spin_image_raw->GetHeight() + spin_image_raw->GetYPadding();
-          frame.step = spin_image_raw->GetStride();
-          frame.encoding = "mono8";
-          size_t data_size = frame.height * frame.step;
-          frame.data.resize(data_size);
-          memcpy(&frame.data[0], spin_image_raw->GetData(), data_size);
-        } else {
-          std::cerr << "Image depth = " << bits_per_pixel << " bits.\n";
-          return false;
-        }
-      }
-    } catch (const Spinnaker::Exception& e) {
-      std::cerr << "Could not grab frame. Error: " << e.what() << '\n';
-      return false;
-    }
-  } else {
-    std::cerr << "Camera acquisition has not started yet\n";
-    return false;
-  }
-  return true;
-}
-
 bool SpinnakerCamera::startAcquisition() {
   try {
     if (camera_pointer && !acquisition_started) {
@@ -151,5 +113,53 @@ bool SpinnakerCamera::stopAcquisition() {
     return false;
   }
 
+  return true;
+}
+
+bool SpinnakerCamera::grabFrame(sensor_msgs::Image& frame,
+                                std::string& file_name) {
+  if (acquisition_started) {
+    try {
+      Spinnaker::ImagePtr spin_image_raw = camera_pointer->GetNextImage(1000);
+      ros::Time timestamp = ros::Time::now();
+
+      if (spin_image_raw->IsIncomplete()) {
+        std::cerr << "Image was incomplete" << '\n';
+        return false;
+      } else {
+        // Make sure the pixel depth is 8bit
+        size_t bits_per_pixel = spin_image_raw->GetBitsPerPixel();
+
+        if (bits_per_pixel == 8) {
+          // Save Image
+          if (save_image_flag) spin_image_raw->Save(file_name.c_str());
+
+          // Convert to sensor_msg::Image
+          frame.width =
+              spin_image_raw->GetWidth() + spin_image_raw->GetXPadding();
+          frame.height =
+              spin_image_raw->GetHeight() + spin_image_raw->GetYPadding();
+          frame.step = spin_image_raw->GetStride();
+          frame.encoding = "mono8";
+          size_t data_size = frame.height * frame.step;
+          frame.data.resize(data_size);
+          memcpy(&frame.data[0], spin_image_raw->GetData(), data_size);
+
+          // Prepare header
+          frame.header.stamp = timestamp;
+          frame.header.frame_id = camera_id;
+        } else {
+          std::cerr << "Image depth = " << bits_per_pixel << " bits.\n";
+          return false;
+        }
+      }
+    } catch (const Spinnaker::Exception& e) {
+      std::cerr << "Could not grab frame. Error: " << e.what() << '\n';
+      return false;
+    }
+  } else {
+    std::cerr << "Camera acquisition has not started yet\n";
+    return false;
+  }
   return true;
 }

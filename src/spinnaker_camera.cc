@@ -114,11 +114,10 @@ bool SpinnakerCamera::stopAcquisition() {
 }
 
 bool SpinnakerCamera::grabFrame(sensor_msgs::Image& frame,
-                                std::string& file_name,
-                                bool save_frame = false) {
+                                std::string& file_name, bool save_frame) {
   if (acquisition_started) {
     try {
-      Spinnaker::ImagePtr spin_image_raw = camera_pointer->GetNextImage(1000);
+      Spinnaker::ImagePtr spin_image_raw = camera_pointer->GetNextImage(14);
       ros::Time timestamp = ros::Time::now();
 
       if (spin_image_raw->IsIncomplete()) {

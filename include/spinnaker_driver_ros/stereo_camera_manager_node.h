@@ -1,6 +1,6 @@
 #pragma once
 
-#include <functional>
+#include <fstream>
 #include <future>
 #include <mutex>
 #include <thread>
@@ -39,7 +39,8 @@ class StereoCameraManagerNode {
 
   /** @brief Grabs the two images in parallel trying to sync the cameras
    * TODO: Setup the camera info publisher
-   * TODO: Add write to file that will save a csv with the DIC images info
+   * TODO: I need to check that both images were captured successfully before
+   * doing anything
    * @param left_camera The left Spinnaker camera in the stereo pair
    * @param right_camera The right Spinnaker camera in the stereo pair
    * @param left_image_pub Left image publisher
@@ -68,8 +69,12 @@ class StereoCameraManagerNode {
   // Camera parameters
   std::string l_cam_serial, r_cam_serial;
   SpinnakerCamera *l_camera, *r_camera;
+  std::unique_ptr<std::mutex> config_mutex;
 
   // Image folder
   std::string path_to_images;
+  std::ofstream image_list_file;
   uint64_t frame_count;
+  bool save_images;
+  ros::Time startTime;
 };

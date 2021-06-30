@@ -10,7 +10,6 @@
 #include "image_transport/image_transport.h"
 
 /** @brief Class for Spinnaker cameras
- * TODO: Use configuration mutex
  */
 class SpinnakerCamera {
  public:
@@ -81,5 +80,4 @@ class SpinnakerCamera {
   std::string camera_id;
   std::string camera_serial;
   bool acquisition_started;
-  std::unique_ptr<std::mutex> config_mutex;
 };

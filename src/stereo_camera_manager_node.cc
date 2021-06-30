@@ -34,15 +34,16 @@ StereoCameraManagerNode::StereoCameraManagerNode(
         "Could not connect to the cameras with the provided serial numbers");
   }
 
+  std::future<bool> l_acq, r_acq;
   {  // Use async to start capturing as much in sync as possible
-    auto l_acq = std::async(std::launch::async,
-                            [this] { this->l_camera->startAcquisition(); });
-    auto r_acq = std::async(std::launch::async,
-                            [this]() { this->r_camera->startAcquisition(); });
+    l_acq = std::async(std::launch::async, &SpinnakerCamera::startAcquisition,
+                       l_camera);
+    r_acq = std::async(std::launch::async, &SpinnakerCamera::startAcquisition,
+                       r_camera);
   }
 
-  if (l_camera->getAcquisition()) std::cout << "Left camera connected\n";
-  if (r_camera->getAcquisition()) std::cout << "Right camera connected\n";
+  if (l_acq.get()) std::cout << "Left camera connected\n";
+  if (r_acq.get()) std::cout << "Right camera connected\n";
   if (!l_camera->getAcquisition() || !r_camera->getAcquisition()) {
     ROS_ERROR("Could not start frame acquisition");
   }
@@ -111,33 +112,34 @@ void StereoCameraManagerNode::publishImagesSync(
   // Image handles
   sensor_msgs::Image left_cap, right_cap;
   while (ros::ok()) {
-    std::string left_file_path =
+    std::string l_file_path =
         path_to_images + "_0_" + withLeadingZeros(frame_count) + ".tiff";
-    std::string right_file_path =
+    std::string r_file_path =
         path_to_images + "_1_" + withLeadingZeros(frame_count) + ".tiff";
+    std::future<bool> l_image_grab, r_image_grab;
     {  // For async
       std::lock_guard<std::mutex> config_guard(*config_mutex);
-      auto l_image_grab =
-          std::async(std::launch::async, [this, &left_cap, &left_file_path] {
-            this->l_camera->grabFrame(left_cap, left_file_path, save_images);
-          });
+      l_image_grab = std::async(std::launch::async, &SpinnakerCamera::grabFrame,
+                                l_camera, std::ref(left_cap),
+                                std::ref(l_file_path), 1000, save_images);
 
-      auto r_image_grab =
-          std::async(std::launch::async, [this, &right_cap, &right_file_path] {
-            this->r_camera->grabFrame(right_cap, right_file_path, save_images);
-          });
+      r_image_grab = std::async(std::launch::async, &SpinnakerCamera::grabFrame,
+                                r_camera, std::ref(right_cap),
+                                std::ref(r_file_path), 1000, save_images);
     }
-    left_image_pub.publish(left_cap);
-    right_image_pub.publish(right_cap);
+    if (l_image_grab.get() & r_image_grab.get()) {
+      left_image_pub.publish(left_cap);
+      right_image_pub.publish(right_cap);
 
-    if (save_images) {
-      ros::Duration t_l = left_cap.header.stamp - startTime;
-      ros::Duration t_r = right_cap.header.stamp - startTime;
+      if (save_images) {
+        ros::Duration t_l = left_cap.header.stamp - startTime;
+        ros::Duration t_r = right_cap.header.stamp - startTime;
 
-      image_list_file << frame_count << ',' << left_file_path << ','
-                      << right_file_path << ',' << t_l.toSec() << ','
-                      << t_r.toSec() << '\n';
-      frame_count++;
+        image_list_file << frame_count << ',' << l_file_path << ','
+                        << r_file_path << ',' << t_l.toSec() << ','
+                        << t_r.toSec() << '\n';
+        frame_count++;
+      }
     }
   }
 }

@@ -63,11 +63,12 @@ class SpinnakerCamera {
   /** @brief Grabs any available image from the camera buffer
    * @param frame A pointer to an OpenCV Mat of the frame
    * @param file_name File name with full path to save the captured frame
+   * @param delay How many milliseconds should it wait to grab the frame
    * @param save_frame Saves the grabbed image if true
    * @returns True if successful
    **/
   bool grabFrame(sensor_msgs::Image& frame, std::string& file_name,
-                 bool save_frame = false);
+                 uint64_t delay = 1000, bool save_frame = false);
 
  private:
   // Spinnaker handle for camera

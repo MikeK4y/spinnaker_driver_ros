@@ -114,10 +114,11 @@ bool SpinnakerCamera::stopAcquisition() {
 }
 
 bool SpinnakerCamera::grabFrame(sensor_msgs::Image& frame,
-                                std::string& file_name, bool save_frame) {
+                                std::string& file_name, uint64_t delay,
+                                bool save_frame) {
   if (acquisition_started) {
     try {
-      Spinnaker::ImagePtr spin_image_raw = camera_pointer->GetNextImage(14);
+      Spinnaker::ImagePtr spin_image_raw = camera_pointer->GetNextImage(delay);
       ros::Time timestamp = ros::Time::now();
 
       if (spin_image_raw->IsIncomplete()) {
@@ -151,7 +152,7 @@ bool SpinnakerCamera::grabFrame(sensor_msgs::Image& frame,
         }
       }
     } catch (const Spinnaker::Exception& e) {
-      std::cerr << "Could not grab frame. Error: " << e.what() << '\n';
+      // std::cerr << "Could not grab frame. Error: " << e.what() << '\n';
       return false;
     }
   } else {

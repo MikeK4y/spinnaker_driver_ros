@@ -30,23 +30,18 @@ class StereoCameraManagerNode {
                           image_transport::ImageTransport &image_t);
   ~StereoCameraManagerNode();
 
-  std::thread l_cam_worker, r_cam_worker;
+  std::thread frame_grab_worker;
 
  private:
   /** @brief Uses a private node handle to load the node parameters
    */
   void loadParameters();
 
-  /** @brief Grabs the image from the camera and publishes it along with the
-   * camera information TODO: Setup the camera info publisher
-   * @param camera The Spinnaker camera to grab the image from
-   * @param image_pub The publisher for the image
-   * @param camera_info_pub The publisher for the camera information
-   */
-  void publishImage(SpinnakerCamera &camera,
-                    image_transport::Publisher image_pub);
-
-  /** @brief Publishes the images in sync not in separate threads
+  /** @brief Grabs the two images in parallel trying to sync the cameras
+   * TODO: Setup the camera info publisher
+   * TODO: Add write to file that will save a csv with the DIC images info
+   * @param left_camera The left Spinnaker camera in the stereo pair
+   * @param right_camera The right Spinnaker camera in the stereo pair
    * @param left_image_pub Left image publisher
    * @param right_image_pub Right image publisher
    */

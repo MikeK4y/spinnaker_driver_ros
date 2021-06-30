@@ -50,7 +50,6 @@ class SpinnakerCamera {
    **/
   bool stopAcquisition();
 
-  // Getters
   /** @brief Returns the Camera Serial Number
    * @returns Camera Serial Number
    **/
@@ -62,18 +61,14 @@ class SpinnakerCamera {
    */
   bool getAcquisition() const { return acquisition_started; }
 
-  // Setters
-  /** @brief Sets the save_image_flag
-   * @param save_image 
-   */
-  void setSaveImage(bool save_image) { save_image_flag = save_image; }
-
   /** @brief Grabs any available image from the camera buffer
    * @param frame A pointer to an OpenCV Mat of the frame
    * @param file_name File name with full path to save the captured frame
+   * @param save_frame Saves the grabbed image if true
    * @returns True if successful
    **/
-  bool grabFrame(sensor_msgs::Image& frame, std::string& file_name);
+  bool grabFrame(sensor_msgs::Image& frame, std::string& file_name,
+                 bool save_frame = false);
 
  private:
   // Spinnaker handle for camera
@@ -86,6 +81,5 @@ class SpinnakerCamera {
   std::string camera_id;
   std::string camera_serial;
   bool acquisition_started;
-  bool save_image_flag;
   std::unique_ptr<std::mutex> config_mutex;
 };

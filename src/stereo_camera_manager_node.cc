@@ -68,14 +68,7 @@ StereoCameraManagerNode::StereoCameraManagerNode(
   // ros::Publisher r_cam_info_pub =
   //     nh.advertise<sensor_msgs::CameraInfo>("right_camera/camera_info", 1);
 
-  // l_cam_worker = std::thread(&StereoCameraManagerNode::publishImage, this,
-  //                            std::ref(*l_camera), l_image_pub);
-  // r_cam_worker = std::thread(&StereoCameraManagerNode::publishImage, this,
-  //                            std::ref(*r_camera), r_image_pub);
-
-  // publishImagesSync(l_image_pub, r_image_pub);
-
-  l_cam_worker = std::thread(&StereoCameraManagerNode::publishImagesSync, this,
+  frame_grab_worker = std::thread(&StereoCameraManagerNode::publishImagesSync, this,
                              std::ref(*l_camera), std::ref(*r_camera),
                              l_image_pub, r_image_pub);
 }
@@ -98,19 +91,6 @@ void StereoCameraManagerNode::loadParameters() {
   r_cam_serial = std::to_string(r_serial);
 
   nh_lcl.param("path_to_images", path_to_images, std::string("/tmp"));
-}
-
-void StereoCameraManagerNode::publishImage(
-    SpinnakerCamera &camera, image_transport::Publisher image_pub) {
-  sensor_msgs::Image cap;
-  while (ros::ok()) {
-    std::string file_path = "some_path";
-    if (camera.grabFrame(cap, file_path)) {
-      image_pub.publish(cap);
-    } else {
-      ROS_WARN("Did not received a frame! Trying again");
-    }
-  }
 }
 
 void StereoCameraManagerNode::publishImagesSync(

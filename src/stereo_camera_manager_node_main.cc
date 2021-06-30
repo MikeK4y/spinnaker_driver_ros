@@ -9,8 +9,7 @@ int main(int argc, char **argv) {
 
   ros::spin();
 
-  camera_mngr.l_cam_worker.join();
-  camera_mngr.r_cam_worker.join();
+  camera_mngr.frame_grab_worker.join();
 
   return 0;
 }

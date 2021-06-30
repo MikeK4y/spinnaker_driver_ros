@@ -3,10 +3,7 @@
 #include "spinnaker_driver_ros/set_camera_feature.h"
 
 SpinnakerCamera::SpinnakerCamera(std::string serial, std::string id)
-    : acquisition_started(false),
-      camera_serial(serial),
-      camera_id(id),
-      save_image_flag(false) {}
+    : acquisition_started(false), camera_serial(serial), camera_id(id) {}
 
 SpinnakerCamera::~SpinnakerCamera() {
   camera_pointer->DeInit();
@@ -117,7 +114,8 @@ bool SpinnakerCamera::stopAcquisition() {
 }
 
 bool SpinnakerCamera::grabFrame(sensor_msgs::Image& frame,
-                                std::string& file_name) {
+                                std::string& file_name,
+                                bool save_frame = false) {
   if (acquisition_started) {
     try {
       Spinnaker::ImagePtr spin_image_raw = camera_pointer->GetNextImage(1000);
@@ -132,7 +130,7 @@ bool SpinnakerCamera::grabFrame(sensor_msgs::Image& frame,
 
         if (bits_per_pixel == 8) {
           // Save Image
-          if (save_image_flag) spin_image_raw->Save(file_name.c_str());
+          if (save_frame) spin_image_raw->Save(file_name.c_str());
 
           // Convert to sensor_msg::Image
           frame.width =

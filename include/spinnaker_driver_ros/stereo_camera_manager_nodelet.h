@@ -11,6 +11,7 @@
 
 // ROS
 #include <dynamic_reconfigure/server.h>
+#include <nodelet/nodelet.h>
 #include <ros/ros.h>
 
 #include "camera_info_manager/camera_info_manager.h"
@@ -23,16 +24,19 @@
 // SpinnakerCamera class
 #include "spinnaker_camera.h"
 
-class StereoCameraManagerNode {
+namespace spinnaker_driver_ros {
+
+class StereoCameraManagerNodelet : public nodelet::Nodelet {
  public:
   /** TODO: Add exceptions to stop constructor if something's not right */
-  StereoCameraManagerNode(ros::NodeHandle &nh,
-                          image_transport::ImageTransport &image_t);
-  ~StereoCameraManagerNode();
+  StereoCameraManagerNodelet() {}
+  virtual ~StereoCameraManagerNodelet();
 
   std::thread frame_grab_worker;
 
  private:
+  virtual void onInit();
+
   /** @brief Uses a private node handle to load the node parameters
    */
   void loadParameters();
@@ -76,3 +80,5 @@ class StereoCameraManagerNode {
   bool save_images;
   ros::Time startTime;
 };
+
+}  // namespace spinnaker_driver_ros

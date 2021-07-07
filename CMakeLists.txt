@@ -1,14 +1,15 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(spinnaker_driver_ros)
 
-## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++14)
+set(CMAKE_BUILD_TYPE Release)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
   camera_info_manager
   dynamic_reconfigure
   image_transport
+  nodelet
   roscpp
   rospy
   sensor_msgs
@@ -34,7 +35,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES spinnaker_driver_ros
- CATKIN_DEPENDS camera_info_manager dynamic_reconfigure image_transport roscpp rospy sensor_msgs
+ CATKIN_DEPENDS camera_info_manager dynamic_reconfigure image_transport nodelet roscpp rospy sensor_msgs
 )
 
 ###########
@@ -47,7 +48,7 @@ include_directories(
   ${Spinnaker_INCLUDE_DIRS}
 )
 
-# Spinnaker camera
+# Spinnaker camera library
 add_library(spinnaker_camera
   src/spinnaker_camera.cc
 )
@@ -58,12 +59,32 @@ add_executable(camera_manager_node
   src/stereo_camera_manager_node_main.cc
 )
 
-## Dependencies
+# Camera manager nodelet library
+add_library(camera_manager_nodelet
+  src/stereo_camera_manager_nodelet.cc
+)
+
+# Camera manager nodelet runnable
+add_executable(camera_manager_nodelet_runnable
+  src/stereo_camera_manager_nodelet_main.cc
+)
+
+##################
+## Dependencies ##
+##################
+
 add_dependencies(camera_manager_node
   ${catkin_EXPORTED_TARGETS}
 )
 
-## Linking
+add_dependencies(camera_manager_nodelet
+  ${catkin_EXPORTED_TARGETS}
+)
+
+#############
+## Linking ##
+#############
+
 target_link_libraries(spinnaker_camera
   ${catkin_LIBRARIES}
   ${Spinnaker_LIBS}
@@ -73,4 +94,34 @@ target_link_libraries(camera_manager_node
   ${catkin_LIBRARIES}
   ${Spinnaker_LIBS}
   spinnaker_camera
- )
+)
+
+target_link_libraries(camera_manager_nodelet
+  ${catkin_LIBRARIES}
+  ${Spinnaker_LIBS}
+  spinnaker_camera
+)
+
+target_link_libraries(camera_manager_nodelet_runnable
+  camera_manager_nodelet
+)
+
+#############
+## Install ##
+#############
+
+install(FILES stereo_camera_manager_nodelet_plugins.xml
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+install(DIRECTORY cfg launch
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+install(TARGETS
+  camera_manager_node
+  camera_manager_nodelet_runnable
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)

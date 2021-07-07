@@ -1,9 +1,14 @@
-#include "spinnaker_driver_ros/stereo_camera_manager_node.h"
+#include "spinnaker_driver_ros/stereo_camera_manager_nodelet.h"
+
+#include <pluginlib/class_list_macros.h>
 
 #include <functional>
 
 // ROS
 #include "camera_info_manager/camera_info_manager.h"
+
+PLUGINLIB_EXPORT_CLASS(spinnaker_driver_ros::StereoCameraManagerNodelet,
+                       nodelet::Nodelet);
 
 inline std::string withLeadingZeros(uint64_t i, uint64_t max = 7) {
   std::ostringstream ss;
@@ -11,8 +16,11 @@ inline std::string withLeadingZeros(uint64_t i, uint64_t max = 7) {
   return ss.str();
 }
 
-StereoCameraManagerNode::StereoCameraManagerNode(
-    ros::NodeHandle &nh, image_transport::ImageTransport &image_t) {
+namespace spinnaker_driver_ros {
+
+void StereoCameraManagerNodelet::onInit() {
+  ros::NodeHandle nh = getNodeHandle();
+  image_transport::ImageTransport image_t(nh);
   // Initialize Spinnaker handles
   system = Spinnaker::System::GetInstance();
   camera_list = system->GetCameras();
@@ -52,8 +60,9 @@ StereoCameraManagerNode::StereoCameraManagerNode(
   config_mutex.reset(new std::mutex);
   dynamic_reconfigure::Server<
       spinnaker_driver_ros::stereoCameraParametersConfig>::CallbackType
-      config_cb = boost::bind(
-          &StereoCameraManagerNode::dynamicReconfigureCallback, this, _1, _2);
+      config_cb =
+          boost::bind(&StereoCameraManagerNodelet::dynamicReconfigureCallback,
+                      this, _1, _2);
   config_server.setCallback(config_cb);
 
   // Initialize frame capturing
@@ -80,18 +89,19 @@ StereoCameraManagerNode::StereoCameraManagerNode(
   //     nh.advertise<sensor_msgs::CameraInfo>("right_camera/camera_info", 1);
 
   frame_grab_worker = std::thread(
-      &StereoCameraManagerNode::publishImagesSync, this, std::ref(*l_camera),
+      &StereoCameraManagerNodelet::publishImagesSync, this, std::ref(*l_camera),
       std::ref(*r_camera), l_image_pub, r_image_pub);
 }
 
-StereoCameraManagerNode::~StereoCameraManagerNode() {
+StereoCameraManagerNodelet::~StereoCameraManagerNodelet() {
+  frame_grab_worker.join();
   image_list_file.close();
   delete l_camera, r_camera;
   camera_list.Clear();
   system->ReleaseInstance();
 }
 
-void StereoCameraManagerNode::loadParameters() {
+void StereoCameraManagerNodelet::loadParameters() {
   ros::NodeHandle nh_lcl("~");
 
   int l_serial, r_serial;
@@ -105,7 +115,7 @@ void StereoCameraManagerNode::loadParameters() {
   nh_lcl.param("path_to_images", path_to_images, std::string("/tmp"));
 }
 
-void StereoCameraManagerNode::publishImagesSync(
+void StereoCameraManagerNodelet::publishImagesSync(
     SpinnakerCamera &left_camera, SpinnakerCamera &right_camera,
     image_transport::Publisher left_image_pub,
     image_transport::Publisher right_image_pub) {
@@ -144,10 +154,11 @@ void StereoCameraManagerNode::publishImagesSync(
   }
 }
 
-void StereoCameraManagerNode::dynamicReconfigureCallback(
+void StereoCameraManagerNodelet::dynamicReconfigureCallback(
     spinnaker_driver_ros::stereoCameraParametersConfig &config,
     uint32_t level) {
   std::lock_guard<std::mutex> config_guard(*config_mutex);
   l_camera->configure(config.exposure_time, config.gain, config.fps);
   r_camera->configure(config.exposure_time, config.gain, config.fps);
 }
+}  // namespace spinnaker_driver_ros

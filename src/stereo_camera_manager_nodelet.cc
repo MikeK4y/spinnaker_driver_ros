@@ -172,11 +172,15 @@ void StereoCameraManagerNodelet::dynamicReconfigureCallback(
   double diff = abs(current_config.gain - config.gain) +
                 abs(current_config.fps - config.fps) +
                 abs(current_config.exposure_time - config.exposure_time);
-
+  
   if (diff > 0) {
     std::lock_guard<std::mutex> config_guard(*config_mutex);
     l_camera->configure(config.exposure_time, config.gain, config.fps);
     r_camera->configure(config.exposure_time, config.gain, config.fps);
+
+    current_config.gain = config.gain;
+    current_config.fps = config.fps;
+    current_config.exposure_time = config.exposure_time;
   }
 }
 }  // namespace spinnaker_driver_ros

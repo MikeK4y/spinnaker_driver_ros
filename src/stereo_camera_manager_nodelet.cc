@@ -129,9 +129,9 @@ void StereoCameraManagerNodelet::publishImagesSync(
     bool save_this_frame = save_images & !bool(frame_count % save_percent);
     if (save_this_frame) {
       l_file_path =
-          path_to_images + "_0_" + withLeadingZeros(frame_count) + ".tif";
+          path_to_images + "_0_" + withLeadingZeros(saved_frame_count) + ".tif";
       r_file_path =
-          path_to_images + "_1_" + withLeadingZeros(frame_count) + ".tif";
+          path_to_images + "_1_" + withLeadingZeros(saved_frame_count) + ".tif";
     }
     std::future<bool> l_image_grab, r_image_grab;
     {  // For async

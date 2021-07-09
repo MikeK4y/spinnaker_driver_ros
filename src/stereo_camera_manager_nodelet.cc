@@ -66,8 +66,11 @@ void StereoCameraManagerNodelet::onInit() {
   config_server.setCallback(config_cb);
 
   // Initialize frame capturing
-  save_images = true;
+  current_config.exposure_time = 0.0;
+  current_config.fps = 0.0;
+  current_config.gain = 0.0;
   frame_count = 0;
+  saved_frame_count = 0;
   startTime = ros::Time::now();
   std::string image_list_file_name = path_to_images + "_image_list.csv";
   image_list_file.open(image_list_file_name);
@@ -121,35 +124,40 @@ void StereoCameraManagerNodelet::publishImagesSync(
     image_transport::Publisher right_image_pub) {
   // Image handles
   sensor_msgs::Image left_cap, right_cap;
+  std::string l_file_path, r_file_path;
   while (ros::ok()) {
-    std::string l_file_path =
-        path_to_images + "_0_" + withLeadingZeros(frame_count) + ".tif";
-    std::string r_file_path =
-        path_to_images + "_1_" + withLeadingZeros(frame_count) + ".tif";
+    bool save_this_frame = save_images & !bool(frame_count % save_percent);
+    if (save_this_frame) {
+      l_file_path =
+          path_to_images + "_0_" + withLeadingZeros(frame_count) + ".tif";
+      r_file_path =
+          path_to_images + "_1_" + withLeadingZeros(frame_count) + ".tif";
+    }
     std::future<bool> l_image_grab, r_image_grab;
     {  // For async
       std::lock_guard<std::mutex> config_guard(*config_mutex);
       l_image_grab = std::async(std::launch::async, &SpinnakerCamera::grabFrame,
                                 l_camera, std::ref(left_cap),
-                                std::ref(l_file_path), 1000, save_images);
+                                std::ref(l_file_path), 1000, save_this_frame);
 
       r_image_grab = std::async(std::launch::async, &SpinnakerCamera::grabFrame,
                                 r_camera, std::ref(right_cap),
-                                std::ref(r_file_path), 1000, save_images);
+                                std::ref(r_file_path), 1000, save_this_frame);
     }
     if (l_image_grab.get() & r_image_grab.get()) {
       left_image_pub.publish(left_cap);
       right_image_pub.publish(right_cap);
 
-      if (save_images) {
+      if (save_this_frame) {
         ros::Duration t_l = left_cap.header.stamp - startTime;
         ros::Duration t_r = right_cap.header.stamp - startTime;
 
-        image_list_file << frame_count << ',' << l_file_path << ','
+        image_list_file << saved_frame_count << ',' << l_file_path << ','
                         << r_file_path << ',' << t_l.toSec() << ','
                         << t_r.toSec() << '\n';
-        frame_count++;
+        saved_frame_count++;
       }
+      frame_count++;
     }
   }
 }
@@ -157,8 +165,18 @@ void StereoCameraManagerNodelet::publishImagesSync(
 void StereoCameraManagerNodelet::dynamicReconfigureCallback(
     spinnaker_driver_ros::stereoCameraParametersConfig &config,
     uint32_t level) {
-  std::lock_guard<std::mutex> config_guard(*config_mutex);
-  l_camera->configure(config.exposure_time, config.gain, config.fps);
-  r_camera->configure(config.exposure_time, config.gain, config.fps);
+  save_percent = uint64_t(1.0 / config.save_percent);
+  save_images = config.save_images;
+
+  // Check if the camera settings have changed
+  double diff = abs(current_config.gain - config.gain) +
+                abs(current_config.fps - config.fps) +
+                abs(current_config.exposure_time - config.exposure_time);
+
+  if (diff > 0) {
+    std::lock_guard<std::mutex> config_guard(*config_mutex);
+    l_camera->configure(config.exposure_time, config.gain, config.fps);
+    r_camera->configure(config.exposure_time, config.gain, config.fps);
+  }
 }
 }  // namespace spinnaker_driver_ros

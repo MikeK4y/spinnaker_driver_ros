@@ -72,11 +72,14 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
   std::string l_cam_serial, r_cam_serial;
   SpinnakerCamera *l_camera, *r_camera;
   std::unique_ptr<std::mutex> config_mutex;
+  spinnaker_driver_ros::stereoCameraParametersConfig current_config;
 
   // Image folder
   std::string path_to_images;
   std::ofstream image_list_file;
   uint64_t frame_count;
+  uint64_t saved_frame_count;
+  uint64_t save_percent;
   bool save_images;
   ros::Time startTime;
 };

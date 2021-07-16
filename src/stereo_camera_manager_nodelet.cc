@@ -161,17 +161,21 @@ void StereoCameraManagerNodelet::publishImagesSync(
                                 std::ref(r_file_path), 1000, save_this_frame);
     }
     if (l_image_grab.get() & r_image_grab.get()) {
+      // Get average time to fool Kalibr that the two images are synced
+      ros::Time avg_time = l_time + (r_time - l_time) * 0.5;
       if (resize_images) {
         cv::Mat l_cap_resized, r_cap_resized;
         cv::resize(l_cap, l_cap_resized, cv::Size(), 1.0 / resize_factor,
                    1.0 / resize_factor, cv::INTER_LINEAR);
         cv::resize(r_cap, r_cap_resized, cv::Size(), 1.0 / resize_factor,
                    1.0 / resize_factor, cv::INTER_LINEAR);
+
+        left_image_pub.publish(toROSImageMsg(l_cap_resized, avg_time));
+        right_image_pub.publish(toROSImageMsg(r_cap_resized, avg_time));
+      } else {
+        left_image_pub.publish(toROSImageMsg(l_cap, avg_time));
+        right_image_pub.publish(toROSImageMsg(r_cap, avg_time));
       }
-      // Get average time to fool Kalibr that the two images are synced
-      ros::Time avg_time = l_time + (r_time - l_time) * 0.5;
-      left_image_pub.publish(toROSImageMsg(l_cap, avg_time));
-      right_image_pub.publish(toROSImageMsg(r_cap, avg_time));
 
       if (save_this_frame) {
         ros::Duration t_l = l_time - startTime;

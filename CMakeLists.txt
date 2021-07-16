@@ -7,6 +7,7 @@ set(CMAKE_BUILD_TYPE Release)
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
   camera_info_manager
+  cv_bridge
   dynamic_reconfigure
   image_transport
   nodelet
@@ -35,7 +36,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES spinnaker_driver_ros
- CATKIN_DEPENDS camera_info_manager dynamic_reconfigure image_transport nodelet roscpp rospy sensor_msgs
+ CATKIN_DEPENDS camera_info_manager cv_bridge dynamic_reconfigure image_transport nodelet roscpp rospy sensor_msgs
 )
 
 ###########

@@ -113,13 +113,13 @@ bool SpinnakerCamera::stopAcquisition() {
   return true;
 }
 
-bool SpinnakerCamera::grabFrame(sensor_msgs::Image& frame,
+bool SpinnakerCamera::grabFrame(cv::Mat& frame, ros::Time& timestamp,
                                 std::string& file_name, uint64_t delay,
                                 bool save_frame) {
   if (acquisition_started) {
     try {
       Spinnaker::ImagePtr spin_image_raw = camera_pointer->GetNextImage(delay);
-      ros::Time timestamp = ros::Time::now();
+      timestamp = ros::Time::now();
 
       if (spin_image_raw->IsIncomplete()) {
         std::cerr << "Image was incomplete" << '\n';
@@ -132,20 +132,11 @@ bool SpinnakerCamera::grabFrame(sensor_msgs::Image& frame,
           // Save Image
           if (save_frame) spin_image_raw->Save(file_name.c_str());
 
-          // Convert to sensor_msg::Image
-          frame.width =
-              spin_image_raw->GetWidth() + spin_image_raw->GetXPadding();
-          frame.height =
-              spin_image_raw->GetHeight() + spin_image_raw->GetYPadding();
-          frame.step = spin_image_raw->GetStride();
-          frame.encoding = "mono8";
-          size_t data_size = frame.height * frame.step;
-          frame.data.resize(data_size);
-          memcpy(&frame.data[0], spin_image_raw->GetData(), data_size);
-
-          // Prepare header
-          frame.header.stamp = timestamp;
-          frame.header.frame_id = camera_id;
+          // Convert to CV Mat
+          frame = cv::Mat(
+              spin_image_raw->GetHeight() + spin_image_raw->GetYPadding(),
+              spin_image_raw->GetWidth() + spin_image_raw->GetXPadding(),
+              CV_8UC1, spin_image_raw->GetData(), spin_image_raw->GetStride());
         } else {
           std::cerr << "Image depth = " << bits_per_pixel << " bits.\n";
           return false;

@@ -7,6 +7,7 @@
 #include "Spinnaker.h"
 
 // ROS
+#include "cv_bridge/cv_bridge.h"
 #include "image_transport/image_transport.h"
 
 /** @brief Class for Spinnaker cameras
@@ -67,7 +68,7 @@ class SpinnakerCamera {
    * @param save_frame Saves the grabbed image if true
    * @returns True if successful
    **/
-  bool grabFrame(sensor_msgs::Image& frame, std::string& file_name,
+  bool grabFrame(cv::Mat& frame, ros::Time& timestamp, std::string& file_name,
                  uint64_t delay = 1000, bool save_frame = false);
 
  private:

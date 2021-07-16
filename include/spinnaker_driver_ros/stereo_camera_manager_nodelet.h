@@ -80,7 +80,9 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
   uint64_t frame_count;
   uint64_t saved_frame_count;
   uint64_t save_percent;
+  double resize_factor;
   bool save_images;
+  bool resize_images;
   ros::Time startTime;
 };
 

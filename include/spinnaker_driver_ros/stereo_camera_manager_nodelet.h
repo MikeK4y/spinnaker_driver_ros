@@ -42,16 +42,8 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
   void loadParameters();
 
   /** @brief Grabs the two images in parallel trying to sync the cameras
-   * TODO: Setup the camera info publisher
-   * @param left_camera The left Spinnaker camera in the stereo pair
-   * @param right_camera The right Spinnaker camera in the stereo pair
-   * @param left_image_pub Left image publisher
-   * @param right_image_pub Right image publisher
    */
-  void publishImagesSync(SpinnakerCamera &left_camera,
-                         SpinnakerCamera &right_camera,
-                         image_transport::Publisher left_image_pub,
-                         image_transport::Publisher right_image_pub);
+  void publishImagesSync();
 
   /** @brief Callback for the dynamic reconfigure server
    */
@@ -64,6 +56,10 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
       spinnaker_driver_ros::stereoCameraParametersConfig>
       config_server;
 
+  // Publishers
+  image_transport::Publisher l_image_pub, r_image_pub;
+  ros::Publisher l_cam_info_pub, r_cam_info_pub;
+
   // Spinnaker handles
   Spinnaker::SystemPtr system;
   Spinnaker::CameraList camera_list;
@@ -71,6 +67,8 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
   // Camera parameters
   std::string l_cam_serial, r_cam_serial;
   SpinnakerCamera *l_camera, *r_camera;
+  sensor_msgs::CameraInfo l_cam_info, r_cam_info;
+  sensor_msgs::CameraInfo l_cam_info_resized, r_cam_info_resized;
   std::unique_ptr<std::mutex> config_mutex;
   spinnaker_driver_ros::stereoCameraParametersConfig current_config;
 

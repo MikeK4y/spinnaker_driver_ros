@@ -1,11 +1,9 @@
 #include "spinnaker_driver_ros/stereo_camera_manager_nodelet.h"
 
-#include <pluginlib/class_list_macros.h>
-
 #include <functional>
 
 // ROS
-#include "camera_info_manager/camera_info_manager.h"
+#include <pluginlib/class_list_macros.h>
 #include "cv_bridge/cv_bridge.h"
 
 PLUGINLIB_EXPORT_CLASS(spinnaker_driver_ros::StereoCameraManagerNodelet,
@@ -96,19 +94,16 @@ void StereoCameraManagerNodelet::onInit() {
   }
 
   // Setup Publishers
-  image_transport::Publisher l_image_pub =
-      image_t.advertise("left_camera/image_raw", 1);
-  // ros::Publisher l_cam_info_pub =
-  //     nh.advertise<sensor_msgs::CameraInfo>("left_camera/camera_info", 1);
+  l_image_pub = image_t.advertise("left_camera/image_raw", 1);
+  l_cam_info_pub =
+      nh.advertise<sensor_msgs::CameraInfo>("left_camera/camera_info", 1);
 
-  image_transport::Publisher r_image_pub =
-      image_t.advertise("right_camera/image_raw", 1);
-  // ros::Publisher r_cam_info_pub =
-  //     nh.advertise<sensor_msgs::CameraInfo>("right_camera/camera_info", 1);
+  r_image_pub = image_t.advertise("right_camera/image_raw", 1);
+  r_cam_info_pub =
+      nh.advertise<sensor_msgs::CameraInfo>("right_camera/camera_info", 1);
 
-  frame_grab_worker = std::thread(
-      &StereoCameraManagerNodelet::publishImagesSync, this, std::ref(*l_camera),
-      std::ref(*r_camera), l_image_pub, r_image_pub);
+  frame_grab_worker =
+      std::thread(&StereoCameraManagerNodelet::publishImagesSync, this);
 }
 
 StereoCameraManagerNodelet::~StereoCameraManagerNodelet() {
@@ -123,20 +118,39 @@ void StereoCameraManagerNodelet::loadParameters() {
   ros::NodeHandle nh_lcl("~");
 
   int l_serial, r_serial;
+  std::string l_camera_info_file, r_camera_info_file;
 
   nh_lcl.param("left_camera_serial", l_serial, 01234567);
   nh_lcl.param("right_camera_serial", r_serial, 01234567);
+  nh_lcl.param(
+      "left_camera_info_url", l_camera_info_file,
+      std::string("package://spinnaker_driver_ros/cfg/left_camera.yaml"));
+  nh_lcl.param(
+      "right_camera_info_url", r_camera_info_file,
+      std::string("package://spinnaker_driver_ros/cfg/right_camera.yaml"));
 
   l_cam_serial = std::to_string(l_serial);
   r_cam_serial = std::to_string(r_serial);
 
+  camera_info_manager::CameraInfoManager cam_manager(nh_lcl);
+  cam_manager.setCameraName("left_camera");
+
+  if (cam_manager.loadCameraInfo(l_camera_info_file))
+    l_cam_info = cam_manager.getCameraInfo();
+  else
+    ROS_ERROR("Could not find left camera calibration file");
+
+  cam_manager.setCameraName("right_camera");
+
+  if (cam_manager.loadCameraInfo(r_camera_info_file))
+    r_cam_info = cam_manager.getCameraInfo();
+  else
+    ROS_ERROR("Could not find right camera calibration file");
+
   nh_lcl.param("path_to_images", path_to_images, std::string("/tmp"));
 }
 
-void StereoCameraManagerNodelet::publishImagesSync(
-    SpinnakerCamera &left_camera, SpinnakerCamera &right_camera,
-    image_transport::Publisher left_image_pub,
-    image_transport::Publisher right_image_pub) {
+void StereoCameraManagerNodelet::publishImagesSync() {
   // Image handles
   cv::Mat l_cap, r_cap;
   ros::Time l_time, r_time;
@@ -163,6 +177,9 @@ void StereoCameraManagerNodelet::publishImagesSync(
     if (l_image_grab.get() & r_image_grab.get()) {
       // Get average time to fool Kalibr that the two images are synced
       ros::Time avg_time = l_time + (r_time - l_time) * 0.5;
+      l_cam_info.header.stamp = avg_time;
+      r_cam_info.header.stamp = avg_time;
+
       if (resize_images) {
         cv::Mat l_cap_resized, r_cap_resized;
         cv::resize(l_cap, l_cap_resized, cv::Size(), 1.0 / resize_factor,
@@ -170,11 +187,15 @@ void StereoCameraManagerNodelet::publishImagesSync(
         cv::resize(r_cap, r_cap_resized, cv::Size(), 1.0 / resize_factor,
                    1.0 / resize_factor, cv::INTER_LINEAR);
 
-        left_image_pub.publish(toROSImageMsg(l_cap_resized, avg_time));
-        right_image_pub.publish(toROSImageMsg(r_cap_resized, avg_time));
+        l_image_pub.publish(toROSImageMsg(l_cap_resized, avg_time));
+        r_image_pub.publish(toROSImageMsg(r_cap_resized, avg_time));
+        l_cam_info_pub.publish(l_cam_info_resized);
+        r_cam_info_pub.publish(r_cam_info_resized);
       } else {
-        left_image_pub.publish(toROSImageMsg(l_cap, avg_time));
-        right_image_pub.publish(toROSImageMsg(r_cap, avg_time));
+        l_image_pub.publish(toROSImageMsg(l_cap, avg_time));
+        r_image_pub.publish(toROSImageMsg(r_cap, avg_time));
+        l_cam_info_pub.publish(l_cam_info);
+        r_cam_info_pub.publish(r_cam_info);
       }
 
       if (save_this_frame) {
@@ -198,6 +219,18 @@ void StereoCameraManagerNodelet::dynamicReconfigureCallback(
   save_images = config.save_images;
   resize_factor = config.resize_factor;
   resize_images = config.resize_images;
+
+  if (resize_images) {
+    l_cam_info_resized.K[0] = l_cam_info.K[0] / resize_factor;
+    l_cam_info_resized.K[2] = l_cam_info.K[2] / resize_factor;
+    l_cam_info_resized.K[4] = l_cam_info.K[4] / resize_factor;
+    l_cam_info_resized.K[5] = l_cam_info.K[5] / resize_factor;
+
+    r_cam_info_resized.K[0] = r_cam_info.K[0] / resize_factor;
+    r_cam_info_resized.K[2] = r_cam_info.K[2] / resize_factor;
+    r_cam_info_resized.K[4] = r_cam_info.K[4] / resize_factor;
+    r_cam_info_resized.K[5] = r_cam_info.K[5] / resize_factor;
+  }
 
   // Check if the camera settings have changed
   double diff = abs(current_config.gain - config.gain) +

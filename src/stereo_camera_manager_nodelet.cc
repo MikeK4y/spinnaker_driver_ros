@@ -4,6 +4,7 @@
 
 // ROS
 #include <pluginlib/class_list_macros.h>
+
 #include "cv_bridge/cv_bridge.h"
 
 PLUGINLIB_EXPORT_CLASS(spinnaker_driver_ros::StereoCameraManagerNodelet,
@@ -135,16 +136,18 @@ void StereoCameraManagerNodelet::loadParameters() {
   camera_info_manager::CameraInfoManager cam_manager(nh_lcl);
   cam_manager.setCameraName("left_camera");
 
-  if (cam_manager.loadCameraInfo(l_camera_info_file))
+  if (cam_manager.loadCameraInfo(l_camera_info_file)) {
     l_cam_info = cam_manager.getCameraInfo();
-  else
+    l_cam_info_resized = l_cam_info;
+  } else
     ROS_ERROR("Could not find left camera calibration file");
 
   cam_manager.setCameraName("right_camera");
 
-  if (cam_manager.loadCameraInfo(r_camera_info_file))
+  if (cam_manager.loadCameraInfo(r_camera_info_file)) {
     r_cam_info = cam_manager.getCameraInfo();
-  else
+    r_cam_info_resized = r_cam_info;
+  } else
     ROS_ERROR("Could not find right camera calibration file");
 
   nh_lcl.param("path_to_images", path_to_images, std::string("/tmp"));
@@ -177,8 +180,6 @@ void StereoCameraManagerNodelet::publishImagesSync() {
     if (l_image_grab.get() & r_image_grab.get()) {
       // Get average time to fool Kalibr that the two images are synced
       ros::Time avg_time = l_time + (r_time - l_time) * 0.5;
-      l_cam_info.header.stamp = avg_time;
-      r_cam_info.header.stamp = avg_time;
 
       if (resize_images) {
         cv::Mat l_cap_resized, r_cap_resized;
@@ -189,11 +190,19 @@ void StereoCameraManagerNodelet::publishImagesSync() {
 
         l_image_pub.publish(toROSImageMsg(l_cap_resized, avg_time));
         r_image_pub.publish(toROSImageMsg(r_cap_resized, avg_time));
+        l_cam_info_resized.header.stamp = avg_time;
+        l_cam_info_resized.header.seq = frame_count;
+        r_cam_info_resized.header.stamp = avg_time;
+        r_cam_info_resized.header.seq = frame_count;
         l_cam_info_pub.publish(l_cam_info_resized);
         r_cam_info_pub.publish(r_cam_info_resized);
       } else {
         l_image_pub.publish(toROSImageMsg(l_cap, avg_time));
         r_image_pub.publish(toROSImageMsg(r_cap, avg_time));
+        l_cam_info.header.stamp = avg_time;
+        l_cam_info.header.seq = frame_count;
+        r_cam_info.header.stamp = avg_time;
+        r_cam_info.header.seq = frame_count;
         l_cam_info_pub.publish(l_cam_info);
         r_cam_info_pub.publish(r_cam_info);
       }

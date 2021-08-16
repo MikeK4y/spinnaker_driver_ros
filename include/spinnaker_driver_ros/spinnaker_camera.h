@@ -32,6 +32,8 @@ class SpinnakerCamera {
    **/
   bool disconnect();
 
+  void setHardwareTrigger();
+
   /** @brief Configures the camera.
    * @param exposure Exposure time
    * @param gain Gain

@@ -1,6 +1,6 @@
 # Camera Serial Numbers
-left_camera_serial: 16276789
-right_camera_serial: 16276787
+left_camera_serial: 16276787
+right_camera_serial: 16276789
 
 # Camera Calibration files
 left_camera_info_url: package://spinnaker_driver_ros/cfg/left_camera.yaml

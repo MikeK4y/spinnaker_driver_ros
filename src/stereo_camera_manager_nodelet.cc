@@ -70,6 +70,9 @@ void StereoCameraManagerNodelet::onInit() {
     ROS_ERROR("Could not start frame acquisition");
   }
 
+  l_camera->setHardwareTrigger();
+  r_camera->setHardwareTrigger();
+
   // Setup Dynamic Reconfigure Server
   config_mutex.reset(new std::mutex);
   dynamic_reconfigure::Server<

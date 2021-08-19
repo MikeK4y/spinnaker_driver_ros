@@ -6,6 +6,8 @@
 #include <pluginlib/class_list_macros.h>
 
 #include "cv_bridge/cv_bridge.h"
+#include "mavros_msgs/CommandTriggerControl.h"
+#include "mavros_msgs/CommandTriggerInterval.h"
 
 PLUGINLIB_EXPORT_CLASS(spinnaker_driver_ros::StereoCameraManagerNodelet,
                        nodelet::Nodelet);
@@ -70,10 +72,13 @@ void StereoCameraManagerNodelet::onInit() {
     ROS_ERROR("Could not start frame acquisition");
   }
 
-  l_camera->setHardwareTrigger();
-  r_camera->setHardwareTrigger();
-
   // Setup Dynamic Reconfigure Server
+  current_config.exposure_time = 0.0;
+  current_config.fps = 0.0;
+  current_config.gain = 0.0;
+  frame_count = 0;
+  saved_frame_count = 0;
+  is_hardware_trigger = false;
   config_mutex.reset(new std::mutex);
   dynamic_reconfigure::Server<
       spinnaker_driver_ros::stereoCameraParametersConfig>::CallbackType
@@ -83,11 +88,6 @@ void StereoCameraManagerNodelet::onInit() {
   config_server.setCallback(config_cb);
 
   // Initialize frame capturing
-  current_config.exposure_time = 0.0;
-  current_config.fps = 0.0;
-  current_config.gain = 0.0;
-  frame_count = 0;
-  saved_frame_count = 0;
   startTime = ros::Time::now();
   std::string image_list_file_name = path_to_images + "_image_list.csv";
   image_list_file.open(image_list_file_name);
@@ -96,6 +96,13 @@ void StereoCameraManagerNodelet::onInit() {
   } else {
     ROS_ERROR("Could not open the image list file");
   }
+
+  // Setup Services
+  pixhawk_trigger_ctrl = nh.serviceClient<mavros_msgs::CommandTriggerControl>(
+      "/mavros/cmd/trigger_control");
+  pixhawk_trigger_config =
+      nh.serviceClient<mavros_msgs::CommandTriggerInterval>(
+          "/mavros/cmd/trigger_interval");
 
   // Setup Publishers
   l_image_pub = image_t.advertise("left_camera/image_raw", 1);
@@ -224,6 +231,22 @@ void StereoCameraManagerNodelet::publishImagesSync() {
   }
 }
 
+bool StereoCameraManagerNodelet::triggerControl(bool enable) {
+  mavros_msgs::CommandTriggerControl srv;
+  srv.request.trigger_enable = enable;
+
+  pixhawk_trigger_ctrl.call(srv);
+  return srv.response.success;
+}
+
+bool StereoCameraManagerNodelet::triggerConfig(double fps) {
+  mavros_msgs::CommandTriggerInterval srv;
+  srv.request.cycle_time = 1.0 / fps;
+
+  pixhawk_trigger_config.call(srv);
+  return srv.response.success;
+}
+
 void StereoCameraManagerNodelet::dynamicReconfigureCallback(
     spinnaker_driver_ros::stereoCameraParametersConfig &config,
     uint32_t level) {
@@ -244,6 +267,46 @@ void StereoCameraManagerNodelet::dynamicReconfigureCallback(
     r_cam_info_resized.K[5] = r_cam_info.K[5] / resize_factor;
   }
 
+  // In hardware triggering the frame rate should be controlled by the
+  // triggering hardware
+  if (config.hardware_trigger && !is_hardware_trigger) {
+    l_camera->setHardwareTrigger();
+    r_camera->setHardwareTrigger();
+
+    // Set fps to maximum allowed so that the software won't limit the
+    // hardware
+    /** TODO: Use maximums from spinnaker_camera when I set them up*/
+    std::lock_guard<std::mutex> config_guard(*config_mutex);
+    l_camera->configure(current_config.exposure_time, current_config.gain, 75);
+    r_camera->configure(current_config.exposure_time, current_config.gain, 75);
+
+    if (triggerConfig(current_config.fps)) {
+      if (triggerControl(true)) is_hardware_trigger = true;
+    }
+
+    if (!is_hardware_trigger) {
+      l_camera->configure(current_config.exposure_time, current_config.gain,
+                          current_config.fps);
+      r_camera->configure(current_config.exposure_time, current_config.gain,
+                          current_config.fps);
+    }
+
+  } else if (is_hardware_trigger && !config.hardware_trigger) {
+    if (triggerControl(false)) {
+      l_camera->setContinuousCapture();
+      r_camera->setContinuousCapture();
+
+      // Set fps to the value from the config server
+      std::lock_guard<std::mutex> config_guard(*config_mutex);
+      l_camera->configure(current_config.exposure_time, current_config.gain,
+                          current_config.exposure_time);
+      r_camera->configure(current_config.exposure_time, current_config.gain,
+                          current_config.exposure_time);
+
+      is_hardware_trigger = false;
+    }
+  }
+
   // Check if the camera settings have changed
   double diff = abs(current_config.gain - config.gain) +
                 abs(current_config.fps - config.fps) +
@@ -251,8 +314,27 @@ void StereoCameraManagerNodelet::dynamicReconfigureCallback(
 
   if (diff > 0) {
     std::lock_guard<std::mutex> config_guard(*config_mutex);
-    l_camera->configure(config.exposure_time, config.gain, config.fps);
-    r_camera->configure(config.exposure_time, config.gain, config.fps);
+    if (!is_hardware_trigger) {
+      l_camera->configure(config.exposure_time, config.gain, config.fps);
+      r_camera->configure(config.exposure_time, config.gain, config.fps);
+    } else {
+      l_camera->configure(config.exposure_time, config.gain, 75);
+      r_camera->configure(config.exposure_time, config.gain, 75);
+
+      // To change the trigger rate you must disable the trigger, change the
+      // rate and then enable it again
+      if (triggerControl(false)) {
+        if (triggerConfig(config.fps)) {
+          std::cout << "Frame rate set to " << config.fps << "fps\n";
+        } else {
+          std::cout << "Could not set the frame rate to " << config.fps
+                    << "fps\n";
+        }
+      }
+      if (!triggerControl(true)) {
+        std::cout << "Failled to restart trigger after rate change\n";
+      }
+    }
 
     current_config.gain = config.gain;
     current_config.fps = config.fps;

@@ -51,6 +51,20 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
       spinnaker_driver_ros::stereoCameraParametersConfig &config,
       uint32_t level);
 
+  /**
+   * @brief Use MavROS Service to control camera hardware triggering
+   * @param enable Enable or disable trigger
+   * @returns True if successful
+   */
+  bool triggerControl(bool enable);
+
+  /**
+   * @brief Use MavROS Service to configure hardware triggering
+   * @param fps Trigger rate
+   * @returns True if successful
+   */
+  bool triggerConfig(double fps);
+
   // Dynamic Reconfigure Server
   dynamic_reconfigure::Server<
       spinnaker_driver_ros::stereoCameraParametersConfig>
@@ -59,6 +73,9 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
   // Publishers
   image_transport::Publisher l_image_pub, r_image_pub;
   ros::Publisher l_cam_info_pub, r_cam_info_pub;
+
+  // ROS Services
+  ros::ServiceClient pixhawk_trigger_ctrl, pixhawk_trigger_config;
 
   // Spinnaker handles
   Spinnaker::SystemPtr system;
@@ -81,6 +98,7 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
   double resize_factor;
   bool save_images;
   bool resize_images;
+  bool is_hardware_trigger;
   ros::Time startTime;
 };
 

@@ -37,6 +37,8 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
   std::string acquisition_mode = "Continuous";
   std::string exposure_auto_mode = "Off";
   std::string gain_auto_mode = "Off";
+  std::string trigger_source = "Line0";
+  std::string trigger_activation = "RisingEdge";
 
   if (setFeature(stream_node_map, "StreamBufferHandlingMode",
                  stream_buffer_handling_mode))
@@ -53,6 +55,12 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
 
   if (setFeature(node_map, "AcquisitionFrameRateEnable", true))
     std::cout << "Enabled Frame Rate Control\n";
+
+  if (setFeature(node_map, "TriggerSource", trigger_source))
+    std::cout << trigger_source << " was set as the trigger source\n";
+
+  if (setFeature(node_map, "TriggerActivation", trigger_activation))
+    std::cout << "Trigger activated on the " << trigger_activation << '\n';
 
   return camera_pointer->IsInitialized();
 }
@@ -72,17 +80,16 @@ bool SpinnakerCamera::disconnect() {
 
 void SpinnakerCamera::setHardwareTrigger() {
   std::string trigger_mode = "On";
-  std::string trigger_source = "Line0";
-  std::string trigger_activation = "RisingEdge";
 
   if (setFeature(node_map, "TriggerMode", trigger_mode))
     std::cout << "Enabled triggering\n";
+}
 
-  if (setFeature(node_map, "TriggerSource", trigger_source))
-    std::cout << trigger_source << " was set as the trigger source\n";
-  
-  if (setFeature(node_map, "TriggerActivation", trigger_activation))
-    std::cout << "Trigger activated on the " << trigger_activation << '\n';
+void SpinnakerCamera::setContinuousCapture() {
+  std::string trigger_mode = "Off";
+
+  if (setFeature(node_map, "TriggerMode", trigger_mode))
+    std::cout << "Enabled triggering\n";
 }
 
 bool SpinnakerCamera::configure(double exposure, double gain, double fps) {

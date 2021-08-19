@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   dynamic_reconfigure
   image_transport
+  mavros
   nodelet
   roscpp
   rospy
@@ -36,7 +37,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES spinnaker_driver_ros
- CATKIN_DEPENDS camera_info_manager cv_bridge dynamic_reconfigure image_transport nodelet roscpp rospy sensor_msgs
+ CATKIN_DEPENDS camera_info_manager cv_bridge dynamic_reconfigure image_transport mavros nodelet roscpp rospy sensor_msgs
 )
 
 ###########
@@ -55,10 +56,10 @@ add_library(spinnaker_camera
 )
 
 # Camera manager node
-add_executable(camera_manager_node
-  src/stereo_camera_manager_node.cc
-  src/stereo_camera_manager_node_main.cc
-)
+# add_executable(camera_manager_node
+#   src/stereo_camera_manager_node.cc
+#   src/stereo_camera_manager_node_main.cc
+# )
 
 # Camera manager nodelet library
 add_library(camera_manager_nodelet
@@ -74,9 +75,9 @@ add_executable(camera_manager_nodelet_runnable
 ## Dependencies ##
 ##################
 
-add_dependencies(camera_manager_node
-  ${catkin_EXPORTED_TARGETS}
-)
+# add_dependencies(camera_manager_node
+#   ${catkin_EXPORTED_TARGETS}
+# )
 
 add_dependencies(camera_manager_nodelet
   ${catkin_EXPORTED_TARGETS}
@@ -91,11 +92,11 @@ target_link_libraries(spinnaker_camera
   ${Spinnaker_LIBS}
 )
 
-target_link_libraries(camera_manager_node
-  ${catkin_LIBRARIES}
-  ${Spinnaker_LIBS}
-  spinnaker_camera
-)
+# target_link_libraries(camera_manager_node
+#   ${catkin_LIBRARIES}
+#   ${Spinnaker_LIBS}
+#   spinnaker_camera
+# )
 
 target_link_libraries(camera_manager_nodelet
   ${catkin_LIBRARIES}
@@ -120,7 +121,7 @@ install(DIRECTORY cfg launch
 )
 
 install(TARGETS
-  camera_manager_node
+  # camera_manager_node
   camera_manager_nodelet_runnable
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

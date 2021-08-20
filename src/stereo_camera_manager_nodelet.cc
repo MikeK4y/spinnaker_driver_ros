@@ -241,7 +241,7 @@ bool StereoCameraManagerNodelet::triggerControl(bool enable) {
 
 bool StereoCameraManagerNodelet::triggerConfig(double fps) {
   mavros_msgs::CommandTriggerInterval srv;
-  srv.request.cycle_time = 1.0 / fps;
+  srv.request.cycle_time = 1000.0 / fps;
 
   pixhawk_trigger_config.call(srv);
   return srv.response.success;
@@ -277,18 +277,16 @@ void StereoCameraManagerNodelet::dynamicReconfigureCallback(
     // hardware
     /** TODO: Use maximums from spinnaker_camera when I set them up*/
     std::lock_guard<std::mutex> config_guard(*config_mutex);
-    l_camera->configure(current_config.exposure_time, current_config.gain, 75);
-    r_camera->configure(current_config.exposure_time, current_config.gain, 75);
+    l_camera->setFPS(75);
+    r_camera->setFPS(75);
 
     if (triggerConfig(current_config.fps)) {
       if (triggerControl(true)) is_hardware_trigger = true;
     }
 
     if (!is_hardware_trigger) {
-      l_camera->configure(current_config.exposure_time, current_config.gain,
-                          current_config.fps);
-      r_camera->configure(current_config.exposure_time, current_config.gain,
-                          current_config.fps);
+      l_camera->setFPS(current_config.exposure_time);
+      r_camera->setFPS(current_config.exposure_time);
     }
 
   } else if (is_hardware_trigger && !config.hardware_trigger) {
@@ -298,10 +296,8 @@ void StereoCameraManagerNodelet::dynamicReconfigureCallback(
 
       // Set fps to the value from the config server
       std::lock_guard<std::mutex> config_guard(*config_mutex);
-      l_camera->configure(current_config.exposure_time, current_config.gain,
-                          current_config.exposure_time);
-      r_camera->configure(current_config.exposure_time, current_config.gain,
-                          current_config.exposure_time);
+      l_camera->setFPS(current_config.exposure_time);
+      r_camera->setFPS(current_config.exposure_time);
 
       is_hardware_trigger = false;
     }
@@ -318,8 +314,10 @@ void StereoCameraManagerNodelet::dynamicReconfigureCallback(
       l_camera->configure(config.exposure_time, config.gain, config.fps);
       r_camera->configure(config.exposure_time, config.gain, config.fps);
     } else {
-      l_camera->configure(config.exposure_time, config.gain, 75);
-      r_camera->configure(config.exposure_time, config.gain, 75);
+      l_camera->setExposure(config.exposure_time);
+      r_camera->setExposure(config.exposure_time);
+      l_camera->setExposure(config.gain);
+      r_camera->setExposure(config.gain);
 
       // To change the trigger rate you must disable the trigger, change the
       // rate and then enable it again

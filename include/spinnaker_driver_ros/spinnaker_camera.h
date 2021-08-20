@@ -52,6 +52,24 @@ class SpinnakerCamera {
    */
   bool configure(double exposure, double gain, double fps);
 
+  /** @brief Sets the camera exposure time
+   * @param exposure Exposure time
+   * @returns True if successful
+   */
+  bool setExposure(double exposure);
+
+  /** @brief Sets the camera gain
+   * @param gain Gain
+   * @returns True if successful
+   */
+  bool setGain(double gain);
+
+  /** @brief Sets the camera frame rate
+   * @param fps Frame rate
+   * @returns True if successful
+   */
+  bool setFPS(double fps);
+
   /** @brief Starts the camera acquisition
    * @returns True if successful
    */

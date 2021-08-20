@@ -105,6 +105,18 @@ bool SpinnakerCamera::configure(double exposure, double gain, double fps) {
   return true;
 }
 
+bool SpinnakerCamera::setExposure(double exposure) {
+  return setFeature(node_map, "ExposureTime", exposure);
+}
+
+bool SpinnakerCamera::setGain(double gain) {
+  return setFeature(node_map, "Gain", gain);
+}
+
+bool SpinnakerCamera::setExposure(double fps) {
+  return setFeature(node_map, "AcquisitionFrameRate", fps);
+}
+
 bool SpinnakerCamera::startAcquisition() {
   try {
     if (camera_pointer && !acquisition_started) {

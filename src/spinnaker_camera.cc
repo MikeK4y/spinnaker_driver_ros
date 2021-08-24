@@ -89,7 +89,7 @@ void SpinnakerCamera::setContinuousCapture() {
   std::string trigger_mode = "Off";
 
   if (setFeature(node_map, "TriggerMode", trigger_mode))
-    std::cout << "Enabled triggering\n";
+    std::cout << "Enabled continuous Acquisition\n";
 }
 
 bool SpinnakerCamera::configure(double exposure, double gain, double fps) {
@@ -113,7 +113,7 @@ bool SpinnakerCamera::setGain(double gain) {
   return setFeature(node_map, "Gain", gain);
 }
 
-bool SpinnakerCamera::setExposure(double fps) {
+bool SpinnakerCamera::setFPS(double fps) {
   return setFeature(node_map, "AcquisitionFrameRate", fps);
 }
 

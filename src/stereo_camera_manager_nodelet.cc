@@ -275,7 +275,7 @@ void StereoCameraManagerNodelet::dynamicReconfigureCallback(
 
     // Set fps to maximum allowed so that the software won't limit the
     // hardware
-    /** TODO: Use maximums from spinnaker_camera when I set them up*/
+    /** TODO: Use maximums from spinnaker_camera whenever I set them up*/
     std::lock_guard<std::mutex> config_guard(*config_mutex);
     l_camera->setFPS(75);
     r_camera->setFPS(75);
@@ -285,8 +285,8 @@ void StereoCameraManagerNodelet::dynamicReconfigureCallback(
     }
 
     if (!is_hardware_trigger) {
-      l_camera->setFPS(current_config.exposure_time);
-      r_camera->setFPS(current_config.exposure_time);
+      l_camera->setFPS(current_config.fps);
+      r_camera->setFPS(current_config.fps);
     }
 
   } else if (is_hardware_trigger && !config.hardware_trigger) {
@@ -296,8 +296,8 @@ void StereoCameraManagerNodelet::dynamicReconfigureCallback(
 
       // Set fps to the value from the config server
       std::lock_guard<std::mutex> config_guard(*config_mutex);
-      l_camera->setFPS(current_config.exposure_time);
-      r_camera->setFPS(current_config.exposure_time);
+      l_camera->setFPS(current_config.fps);
+      r_camera->setFPS(current_config.fps);
 
       is_hardware_trigger = false;
     }
@@ -316,8 +316,8 @@ void StereoCameraManagerNodelet::dynamicReconfigureCallback(
     } else {
       l_camera->setExposure(config.exposure_time);
       r_camera->setExposure(config.exposure_time);
-      l_camera->setExposure(config.gain);
-      r_camera->setExposure(config.gain);
+      l_camera->setGain(config.gain);
+      r_camera->setGain(config.gain);
 
       // To change the trigger rate you must disable the trigger, change the
       // rate and then enable it again

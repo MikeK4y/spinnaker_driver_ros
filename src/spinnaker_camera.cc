@@ -2,20 +2,10 @@
 
 #include "spinnaker_driver_ros/set_camera_feature.h"
 
-#include <unistd.h>
-
 SpinnakerCamera::SpinnakerCamera(std::string serial, std::string id)
     : acquisition_started(false), camera_serial(serial), camera_id(id) {}
 
 SpinnakerCamera::~SpinnakerCamera() {
-  while (!image_buffer.empty()) {
-    std::cout << "Saving the images on the buffer. " << image_buffer.size()
-              << " images remaining\n";
-    sleep(1);
-  }
-  save_images_flag = false;
-  save_images_worker.join();
-
   camera_pointer->DeInit();
   delete camera_pointer;
 }
@@ -72,10 +62,6 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
 
   // Get min-max values for frame rate, exposure and gain
   getMinMaxValues();
-
-  image_buffer_mutex.reset(new std::mutex);
-  save_images_flag = true;
-  save_images_worker = std::thread(&SpinnakerCamera::saveImages, this);
 
   return camera_pointer->IsInitialized();
 }
@@ -176,9 +162,7 @@ bool SpinnakerCamera::grabFrame(cv::Mat &frame, std::string &file_name,
         if (bits_per_pixel == 8) {
           // Save Image
           if (save_frame) {
-            std::lock_guard<std::mutex> image_buffer_guard(*image_buffer_mutex);
-            image_buffer.push_back(spin_image_raw);
-            image_name_buffer.push_back(file_name);
+            spin_image_raw->Save(file_name.c_str());
           }
 
           // Convert to CV Mat
@@ -200,25 +184,6 @@ bool SpinnakerCamera::grabFrame(cv::Mat &frame, std::string &file_name,
     return false;
   }
   return true;
-}
-
-void SpinnakerCamera::saveImages() {
-  while (true) {
-    bool saved_image = false;
-    {  // Anonymous to release mutex in every loop
-      std::lock_guard<std::mutex> image_buffer_guard(*image_buffer_mutex);
-
-      if (image_buffer.size() > 0) {
-        image_buffer.front()->Save(image_name_buffer.front().c_str());
-        image_buffer.pop_front();
-        image_name_buffer.pop_front();
-        saved_image = true;
-      }
-    }
-    if (!saved_image) {
-      usleep(10000);
-    }
-  }
 }
 
 void SpinnakerCamera::getMinMaxValues() {

@@ -88,11 +88,6 @@ class SpinnakerCamera {
   bool grabFrame(cv::Mat& frame, std::string& file_name, uint64_t delay = 1000,
                  bool save_frame = false);
 
-  /**
-   * @brief Saves the raw images. Runs on different thread
-   */
-  void saveImages();
-
   /** @brief Returns the Camera Serial Number
    * @returns Camera Serial Number
    */
@@ -149,10 +144,4 @@ class SpinnakerCamera {
   std::string camera_id;
   std::string camera_serial;
   bool acquisition_started;
-
-  std::thread save_images_worker;
-  bool save_images_flag;
-  std::unique_ptr<std::mutex> image_buffer_mutex;
-  std::list<Spinnaker::ImagePtr> image_buffer;
-  std::list<std::string> image_name_buffer;
 };

@@ -2,10 +2,22 @@
 
 #include "spinnaker_driver_ros/set_camera_feature.h"
 
+#include <unistd.h>
+
 SpinnakerCamera::SpinnakerCamera(std::string serial, std::string id)
-    : acquisition_started(false), camera_serial(serial), camera_id(id) {}
+    : acquisition_started(false), camera_serial(serial), camera_id(id) {
+  save_images_flag = true;
+  save_images_worker = std::thread(&SpinnakerCamera::saveImages, this);
+}
 
 SpinnakerCamera::~SpinnakerCamera() {
+  while (!image_buffer.empty()) {
+    std::cout << "Saving the images on the buffer\n";
+    sleep(1);
+  }
+  save_images_flag = false;
+  save_images_worker.join();
+
   camera_pointer->DeInit();
   delete camera_pointer;
 }
@@ -62,6 +74,9 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
   if (setFeature(node_map, "TriggerActivation", trigger_activation))
     std::cout << "Trigger activated on the " << trigger_activation << '\n';
 
+  // Get min-max values for frame rate, exposure and gain
+  getMinMaxValues();
+
   return camera_pointer->IsInitialized();
 }
 
@@ -75,6 +90,36 @@ bool SpinnakerCamera::disconnect() {
     std::cerr << "Could not disconnect camera. Error: " << e.what() << '\n';
     return false;
   }
+  return true;
+}
+
+bool SpinnakerCamera::startAcquisition() {
+  try {
+    if (camera_pointer && !acquisition_started) {
+      camera_pointer->BeginAcquisition();
+      acquisition_started = true;
+    }
+
+  } catch (const std::exception& e) {
+    std::cerr << "Could not start camera. Error: " << e.what() << '\n';
+    return false;
+  }
+
+  return true;
+}
+
+bool SpinnakerCamera::stopAcquisition() {
+  try {
+    if (camera_pointer && acquisition_started) {
+      camera_pointer->EndAcquisition();
+      acquisition_started = false;
+    }
+
+  } catch (const std::exception& e) {
+    std::cerr << "Could not stop camera. Error: " << e.what() << '\n';
+    return false;
+  }
+
   return true;
 }
 
@@ -117,43 +162,11 @@ bool SpinnakerCamera::setFPS(double fps) {
   return setFeature(node_map, "AcquisitionFrameRate", fps);
 }
 
-bool SpinnakerCamera::startAcquisition() {
-  try {
-    if (camera_pointer && !acquisition_started) {
-      camera_pointer->BeginAcquisition();
-      acquisition_started = true;
-    }
-
-  } catch (const std::exception& e) {
-    std::cerr << "Could not start camera. Error: " << e.what() << '\n';
-    return false;
-  }
-
-  return true;
-}
-
-bool SpinnakerCamera::stopAcquisition() {
-  try {
-    if (camera_pointer && acquisition_started) {
-      camera_pointer->EndAcquisition();
-      acquisition_started = false;
-    }
-
-  } catch (const std::exception& e) {
-    std::cerr << "Could not stop camera. Error: " << e.what() << '\n';
-    return false;
-  }
-
-  return true;
-}
-
-bool SpinnakerCamera::grabFrame(cv::Mat& frame, ros::Time& timestamp,
-                                std::string& file_name, uint64_t delay,
-                                bool save_frame) {
+bool SpinnakerCamera::grabFrame(cv::Mat& frame, std::string& file_name,
+                                uint64_t delay, bool save_frame) {
   if (acquisition_started) {
     try {
       Spinnaker::ImagePtr spin_image_raw = camera_pointer->GetNextImage(delay);
-      timestamp = ros::Time::now();
 
       if (spin_image_raw->IsIncomplete()) {
         std::cerr << "Image was incomplete" << '\n';
@@ -164,7 +177,11 @@ bool SpinnakerCamera::grabFrame(cv::Mat& frame, ros::Time& timestamp,
 
         if (bits_per_pixel == 8) {
           // Save Image
-          if (save_frame) spin_image_raw->Save(file_name.c_str());
+          if (save_frame) {
+            std::lock_guard<std::mutex> image_buffer_guard(*image_buffer_mutex);
+            image_buffer.push_back(spin_image_raw);
+            image_name_buffer.push_back(file_name);
+          }
 
           // Convert to CV Mat
           frame = cv::Mat(
@@ -185,4 +202,39 @@ bool SpinnakerCamera::grabFrame(cv::Mat& frame, ros::Time& timestamp,
     return false;
   }
   return true;
+}
+
+void SpinnakerCamera::saveImages() {
+  while (true) {
+    {  // Anonymous to release mutex in every loop
+      std::lock_guard<std::mutex> image_buffer_guard(*image_buffer_mutex);
+
+      if (image_buffer.size() > 0) {
+        image_buffer.front()->Save(image_name_buffer.front().c_str());
+        image_buffer.pop_front();
+        image_name_buffer.pop_front();
+      }
+    }
+  }
+}
+
+void SpinnakerCamera::getMinMaxValues() {
+  fps_max, fps_min, exp_max, exp_min, gain_max, gain_min = -1;
+  getMinMaxConfigValues(fps_min, fps_max, "AcquisitionFrameRate");
+  getMinMaxConfigValues(exp_min, exp_max, "ExposureTime");
+  getMinMaxConfigValues(gain_min, gain_max, "Gain");
+}
+
+void SpinnakerCamera::getMinMaxConfigValues(double& min_v, double& max_v,
+                                            std::string config_name) {
+  Spinnaker::GenApi::CFloatPtr feature_ptr =
+      node_map->GetNode(config_name.c_str());
+
+  if (!Spinnaker::GenApi::IsAvailable(feature_ptr) ||
+      !Spinnaker::GenApi::IsWritable(feature_ptr)) {
+    std::cerr << config_name << " is not Available/Writable\n";
+  }
+
+  min_v = feature_ptr->GetMin();
+  max_v = feature_ptr->GetMax();
 }

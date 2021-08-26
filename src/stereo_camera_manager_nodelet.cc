@@ -180,16 +180,15 @@ void StereoCameraManagerNodelet::publishImagesSync() {
     {  // For async
       std::lock_guard<std::mutex> config_guard(*config_mutex);
       l_image_grab = std::async(std::launch::async, &SpinnakerCamera::grabFrame,
-                                l_camera, std::ref(l_cap), std::ref(l_time),
+                                l_camera, std::ref(l_cap),
                                 std::ref(l_file_path), 1000, save_this_frame);
 
       r_image_grab = std::async(std::launch::async, &SpinnakerCamera::grabFrame,
-                                r_camera, std::ref(r_cap), std::ref(r_time),
+                                r_camera, std::ref(r_cap),
                                 std::ref(r_file_path), 1000, save_this_frame);
     }
     if (l_image_grab.get() & r_image_grab.get()) {
-      // Get average time to fool Kalibr that the two images are synced
-      ros::Time avg_time = l_time + (r_time - l_time) * 0.5;
+      ros::Time avg_time = ros::Time::now();
 
       if (resize_images) {
         cv::Mat l_cap_resized, r_cap_resized;

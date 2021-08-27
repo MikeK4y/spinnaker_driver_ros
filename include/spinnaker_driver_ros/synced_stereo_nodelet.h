@@ -2,7 +2,6 @@
 
 #include <fstream>
 #include <future>
-#include <mutex>
 #include <thread>
 
 // Spinnaker
@@ -46,9 +45,10 @@ class SyncedStereoNodelet : public nodelet::Nodelet {
   /**
    * @brief Use MavROS Service to control camera hardware triggering
    * @param enable Enable or disable trigger
+   * @param reset Reset sequence
    * @returns True if successful
    */
-  bool triggerControl(bool enable);
+  bool triggerControl(bool enable, bool reset);
 
   /**
    * @brief Use MavROS Service to configure hardware triggering
@@ -89,7 +89,6 @@ class SyncedStereoNodelet : public nodelet::Nodelet {
   sensor_msgs::CameraInfo l_cam_info, r_cam_info;
   sensor_msgs::CameraInfo l_cam_info_resized, r_cam_info_resized;
   std::string l_cam_serial, r_cam_serial;
-  std::unique_ptr<std::mutex> config_mutex;
   double fps, exp, gain;
 
   // Image parameters

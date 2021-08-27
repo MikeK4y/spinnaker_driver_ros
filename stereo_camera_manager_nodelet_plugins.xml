@@ -3,7 +3,7 @@
          type="spinnaker_driver_ros::StereoCameraManagerNodelet"
          base_class_type="nodelet::Nodelet">
     <description>
-      Stereo Camera Manager ros nodelet.
+      Stereo Camera Manager ROS nodelet.
     </description>
   </class>
 </library>

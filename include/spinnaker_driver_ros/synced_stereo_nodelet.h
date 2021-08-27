@@ -12,24 +12,23 @@
 // ROS
 #include "ros/ros.h"
 #include "nodelet/nodelet.h"
-#include "dynamic_reconfigure/server.h"
 #include "camera_info_manager/camera_info_manager.h"
 #include "image_transport/image_transport.h"
-#include "spinnaker_driver_ros/stereoCameraParametersConfig.h"
 
 // ROS messages
 #include "sensor_msgs/image_encodings.h"
+#include "mavros_msgs/CamIMUStamp.h"
 
 // SpinnakerCamera class
 #include "spinnaker_camera.h"
 
 namespace spinnaker_driver_ros {
 
-class StereoCameraManagerNodelet : public nodelet::Nodelet {
+class SyncedStereoNodelet : public nodelet::Nodelet {
  public:
   /** TODO: Add exceptions to stop constructor if something's not right */
-  StereoCameraManagerNodelet() {}
-  virtual ~StereoCameraManagerNodelet();
+  SyncedStereoNodelet() {}
+  virtual ~SyncedStereoNodelet();
 
   std::thread frame_grab_worker;
 
@@ -43,12 +42,6 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
   /** @brief Grabs the two images in parallel trying to sync the cameras
    */
   void publishImagesSync();
-
-  /** @brief Callback for the dynamic reconfigure server
-   */
-  void dynamicReconfigureCallback(
-      spinnaker_driver_ros::stereoCameraParametersConfig &config,
-      uint32_t level);
 
   /**
    * @brief Use MavROS Service to control camera hardware triggering
@@ -64,14 +57,25 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
    */
   bool triggerConfig(double fps);
 
-  // Dynamic Reconfigure Server
-  dynamic_reconfigure::Server<
-      spinnaker_driver_ros::stereoCameraParametersConfig>
-      config_server;
+  /**
+   * @brief Callback for the trigger timepstamps
+   * @param msg MavROS timestamp message
+   */
+  void triggerStampCallback(const mavros_msgs::CamIMUStamp &msg);
 
-  // Publishers
+  /**
+   * @brief Find the timestamp for the frame
+   * @param frame_index Frame index
+   * @returns timestamp
+   */
+  bool getTimestamp(uint64_t frame_index, ros::Time &timestamp);
+
+  // ROS Publishers
   image_transport::Publisher l_image_pub, r_image_pub;
   ros::Publisher l_cam_info_pub, r_cam_info_pub;
+
+  // ROS Subscribers
+  ros::Subscriber trigger_time_stamp_sub;
 
   // ROS Services
   ros::ServiceClient pixhawk_trigger_ctrl, pixhawk_trigger_config;
@@ -81,23 +85,20 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
   Spinnaker::CameraList camera_list;
 
   // Camera parameters
-  std::string l_cam_serial, r_cam_serial;
   SpinnakerCamera *l_camera, *r_camera;
   sensor_msgs::CameraInfo l_cam_info, r_cam_info;
   sensor_msgs::CameraInfo l_cam_info_resized, r_cam_info_resized;
+  std::string l_cam_serial, r_cam_serial;
   std::unique_ptr<std::mutex> config_mutex;
-  spinnaker_driver_ros::stereoCameraParametersConfig current_config;
+  double fps, exp, gain;
 
-  // Image folder
+  // Image parameters
+  std::vector<mavros_msgs::CamIMUStamp> timestamp_buffer;
+  size_t buffer_size = 100;
   std::string path_to_images;
   std::ofstream image_list_file;
-  uint64_t frame_count;
-  uint64_t saved_frame_count;
-  uint64_t save_percent;
-  double resize_factor;
-  bool save_images;
-  bool resize_images;
-  bool is_hardware_trigger;
+  uint32_t frame_count, saved_frame_count, save_percent;
+  double save_rate, resize_factor;
   ros::Time startTime;
 };
 

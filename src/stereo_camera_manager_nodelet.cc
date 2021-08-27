@@ -44,6 +44,7 @@ void StereoCameraManagerNodelet::onInit() {
   if (camera_list.GetSize() < 2) {
     ROS_ERROR("At least two cameras need to be connected. Cameras found = %d",
               camera_list.GetSize());
+    exit(-1);
   }
 
   // Load parameters from ROS
@@ -56,6 +57,7 @@ void StereoCameraManagerNodelet::onInit() {
   if (!l_camera->connect(camera_list) || !r_camera->connect(camera_list)) {
     ROS_ERROR(
         "Could not connect to the cameras with the provided serial numbers");
+    exit(-1);
   }
 
   std::future<bool> l_acq, r_acq;
@@ -70,6 +72,7 @@ void StereoCameraManagerNodelet::onInit() {
   if (r_acq.get()) std::cout << "Right camera connected\n";
   if (!l_camera->getAcquisition() || !r_camera->getAcquisition()) {
     ROS_ERROR("Could not start frame acquisition");
+    exit(-1);
   }
 
   // Setup Dynamic Reconfigure Server
@@ -95,6 +98,7 @@ void StereoCameraManagerNodelet::onInit() {
     image_list_file << "Count,Filename_0,Filename_1,Time_0,Time_1\n";
   } else {
     ROS_ERROR("Could not open the image list file");
+    exit(-1);
   }
 
   // Setup Services
@@ -247,7 +251,7 @@ bool StereoCameraManagerNodelet::triggerConfig(double fps) {
 }
 
 void StereoCameraManagerNodelet::dynamicReconfigureCallback(
-    spinnaker_driver_ros::stereoCameraParametersConfig &config,
+    spinnaker_driver_ros::stereoCameraParametersConfig& config,
     uint32_t level) {
   save_percent = uint64_t(1.0 / config.save_percent);
   save_images = config.save_images;
@@ -274,10 +278,9 @@ void StereoCameraManagerNodelet::dynamicReconfigureCallback(
 
     // Set fps to maximum allowed so that the software won't limit the
     // hardware
-    /** TODO: Use maximums from spinnaker_camera whenever I set them up*/
     std::lock_guard<std::mutex> config_guard(*config_mutex);
-    l_camera->setFPS(75);
-    r_camera->setFPS(75);
+    l_camera->setFPS(l_camera->getFPSmax());
+    r_camera->setFPS(r_camera->getFPSmax());
 
     if (triggerConfig(current_config.fps)) {
       if (triggerControl(true)) is_hardware_trigger = true;

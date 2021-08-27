@@ -41,5 +41,6 @@
 
   <export>
     <nodelet plugin="${prefix}/stereo_camera_manager_nodelet_plugins.xml"/>
+    <nodelet plugin="${prefix}/synced_stereo_nodelet_plugins.xml"/>
   </export>
 </package>

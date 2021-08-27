@@ -68,11 +68,25 @@ add_executable(camera_manager_nodelet_runnable
   src/stereo_camera_manager_nodelet_main.cc
 )
 
+# Synced Stereo nodelet library
+add_library(synced_stereo_nodelet
+  src/synced_stereo_nodelet.cc
+)
+
+# Synced Stereo nodelet runnable
+add_executable(synced_stereo_nodelet_runnable
+  src/synced_stereo_nodelet_main.cc
+)
+
 ##################
 ## Dependencies ##
 ##################
 
 add_dependencies(camera_manager_nodelet
+  ${catkin_EXPORTED_TARGETS}
+)
+
+add_dependencies(synced_stereo_nodelet
   ${catkin_EXPORTED_TARGETS}
 )
 
@@ -95,6 +109,16 @@ target_link_libraries(camera_manager_nodelet_runnable
   camera_manager_nodelet
 )
 
+target_link_libraries(synced_stereo_nodelet
+  ${catkin_LIBRARIES}
+  ${Spinnaker_LIBS}
+  spinnaker_camera
+)
+
+target_link_libraries(synced_stereo_nodelet_runnable
+  synced_stereo_nodelet
+)
+
 #############
 ## Install ##
 #############
@@ -110,6 +134,7 @@ install(DIRECTORY cfg launch
 install(TARGETS
   # camera_manager_node
   camera_manager_nodelet_runnable
+  synced_stereo_nodelet_runnable
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

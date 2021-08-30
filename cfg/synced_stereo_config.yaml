@@ -9,7 +9,7 @@ right_camera_info_url: package://spinnaker_driver_ros/cfg/right_camera.yaml
 # Camera Configuration
 # To make sure that the triggers will all be implemented the frame rate and
 # exposure time should follow: frame_rate <= 1.0 / (0.014 + exposure_time * 1.0e-6)
-frame_rate: 40.0
+frame_rate: 41.0
 exposure_time: 10000.0 # in microseconds
 gain: 10.0
 
@@ -18,7 +18,7 @@ gain: 10.0
 resize_factor: 1.0
 
 # Raw image save rate
-save_percent: 0.5
+save_rate: 0.0
 
 # Path to DIC images
 path_to_images: /tmp/test

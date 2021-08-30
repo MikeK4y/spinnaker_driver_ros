@@ -19,7 +19,8 @@ inline std::string withLeadingZeros(uint64_t i, uint64_t max = 7) {
   return ss.str();
 }
 
-inline sensor_msgs::Image toROSImageMsg(cv::Mat frame, uint32_t sequence, ros::Time timestamp) {
+inline sensor_msgs::Image toROSImageMsg(cv::Mat frame, uint32_t sequence,
+                                        ros::Time timestamp) {
   cv_bridge::CvImage ros_mat;
   sensor_msgs::Image ros_image;
 
@@ -61,6 +62,10 @@ void SyncedStereoNodelet::onInit() {
     exit(-1);
   }
 
+  // Set cameras to hardware triggering
+  l_camera->setHardwareTrigger();
+  r_camera->setHardwareTrigger();
+
   // Start acquisition
   if (l_camera->startAcquisition()) std::cout << "Left camera connected\n";
   if (r_camera->startAcquisition()) std::cout << "Right camera connected\n";
@@ -68,10 +73,6 @@ void SyncedStereoNodelet::onInit() {
     ROS_ERROR("Could not start frame acquisition");
     exit(-1);
   }
-
-  // Set cameras to hardware triggering
-  l_camera->setHardwareTrigger();
-  r_camera->setHardwareTrigger();
 
   // Setup Services
   pixhawk_trigger_ctrl = nh.serviceClient<mavros_msgs::CommandTriggerControl>(
@@ -105,8 +106,8 @@ void SyncedStereoNodelet::onInit() {
   triggerConfig(fps);
 
   // Initialize frame capturing
-  frame_count = 1.0;
-  saved_frame_count = 1.0;
+  frame_count = 0;
+  saved_frame_count = 0;
   if (save_rate > 0.0) {
     startTime = ros::Time::now();
     std::string image_list_file_name = path_to_images + "_image_list.csv";
@@ -146,6 +147,7 @@ void SyncedStereoNodelet::loadParameters() {
 
   save_percent = save_rate == 0.0 ? 0.0 : uint32_t(1.0 / save_rate);
   resize_factor = resize_factor > 1.0 ? 1.0 : resize_factor;
+  buffer_size = size_t(2.0 * fps);
 
   nh_lcl.param("left_camera_serial", l_serial, 01234567);
   nh_lcl.param("right_camera_serial", r_serial, 01234567);
@@ -187,14 +189,16 @@ void SyncedStereoNodelet::publishImagesSync() {
   // Start triggering
   if (triggerControl(true, true)) {
     while (ros::ok()) {
-      bool save_this_frame =
-          (save_rate > 0.0) & !bool(frame_count % save_percent);
+      bool save_this_frame = false;
+      if (save_rate > 0.0) {
+        save_this_frame = !bool(frame_count % save_percent);
 
-      if (save_this_frame) {
-        l_file_path = path_to_images + "_0_" +
-                      withLeadingZeros(saved_frame_count) + ".tif";
-        r_file_path = path_to_images + "_1_" +
-                      withLeadingZeros(saved_frame_count) + ".tif";
+        if (save_this_frame) {
+          l_file_path = path_to_images + "_0_" +
+                        withLeadingZeros(saved_frame_count) + ".tif";
+          r_file_path = path_to_images + "_1_" +
+                        withLeadingZeros(saved_frame_count) + ".tif";
+        }
       }
 
       std::future<bool> l_image_grab, r_image_grab;
@@ -209,6 +213,8 @@ void SyncedStereoNodelet::publishImagesSync() {
       }
 
       if (l_image_grab.get() & r_image_grab.get()) {
+        // Spin to make sure the trigger callback is up to date
+        ros::spinOnce();
         ros::Time timestamp;
         if (getTimestamp(frame_count, timestamp)) {
           if (resize_factor > 1.0) {
@@ -218,8 +224,10 @@ void SyncedStereoNodelet::publishImagesSync() {
             cv::resize(r_cap, r_cap_resized, cv::Size(), 1.0 / resize_factor,
                        1.0 / resize_factor, cv::INTER_LINEAR);
 
-            l_image_pub.publish(toROSImageMsg(l_cap_resized, frame_count, timestamp));
-            r_image_pub.publish(toROSImageMsg(r_cap_resized, frame_count, timestamp));
+            l_image_pub.publish(
+                toROSImageMsg(l_cap_resized, frame_count, timestamp));
+            r_image_pub.publish(
+                toROSImageMsg(r_cap_resized, frame_count, timestamp));
             l_cam_info_resized.header.stamp = timestamp;
             l_cam_info_resized.header.seq = frame_count;
             r_cam_info_resized.header.stamp = timestamp;
@@ -246,10 +254,10 @@ void SyncedStereoNodelet::publishImagesSync() {
                             << t_r.toSec() << '\n';
             saved_frame_count++;
           }
-          frame_count++;
         } else {
           ROS_ERROR("Could not find the timestamp for the frame");
         }
+        frame_count++;
       }
     }
   } else {
@@ -286,7 +294,7 @@ void SyncedStereoNodelet::triggerStampCallback(
   }
 }
 
-bool SyncedStereoNodelet::getTimestamp(uint64_t frame_index,
+bool SyncedStereoNodelet::getTimestamp(uint32_t frame_index,
                                        ros::Time &timestamp) {
   if (timestamp_buffer.size() < 1) {
     return false;

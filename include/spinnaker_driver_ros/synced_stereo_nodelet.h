@@ -68,7 +68,7 @@ class SyncedStereoNodelet : public nodelet::Nodelet {
    * @param frame_index Frame index
    * @returns timestamp
    */
-  bool getTimestamp(uint64_t frame_index, ros::Time &timestamp);
+  bool getTimestamp(uint32_t frame_index, ros::Time &timestamp);
 
   // ROS Publishers
   image_transport::Publisher l_image_pub, r_image_pub;
@@ -93,7 +93,7 @@ class SyncedStereoNodelet : public nodelet::Nodelet {
 
   // Image parameters
   std::vector<mavros_msgs::CamIMUStamp> timestamp_buffer;
-  size_t buffer_size = 100;
+  size_t buffer_size;
   std::string path_to_images;
   std::ofstream image_list_file;
   uint32_t frame_count, saved_frame_count, save_percent;

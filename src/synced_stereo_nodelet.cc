@@ -150,7 +150,7 @@ void SyncedStereoNodelet::loadParameters() {
   nh_lcl.param("resize_factor", resize_factor, 1.0);
 
   save_percent = save_rate == 0.0 ? 0.0 : uint32_t(1.0 / save_rate);
-  resize_factor = resize_factor > 1.0 ? 1.0 : resize_factor;
+  resize_factor = resize_factor < 1.0 ? 1.0 : resize_factor;
   buffer_size = size_t(2.0 * fps);
 
   nh_lcl.param("left_camera_serial", l_serial, 01234567);
@@ -286,8 +286,6 @@ bool SyncedStereoNodelet::triggerConfig(double fps) {
   return srv.response.success;
 }
 
-/** TODO: Change the buffer type from vector to a circular buffer and rewrite
- * the following two functions*/
 void SyncedStereoNodelet::triggerStampCallback(
     const mavros_msgs::CamIMUStamp &msg) {
   timestamp_buffer.emplace_back(msg);

@@ -7,11 +7,12 @@ left_camera_info_url: package://spinnaker_driver_ros/cfg/left_camera.yaml
 right_camera_info_url: package://spinnaker_driver_ros/cfg/right_camera.yaml
 
 # Camera Configuration
-# To make sure that the triggers will all be implemented the frame rate and
-# exposure time should follow: frame_rate <= 1.0 / (0.014 + exposure_time * 1.0e-6)
+# To make sure that the triggers will all be implemented the
+# frame rate and exposure time should follow:
+# frame_rate <= 1.0 / (0.014 + exposure_time * 1.0e-6)
 frame_rate: 41.0
 exposure_time: 10000.0 # in microseconds
-gain: 10.0
+gain: 5.0
 
 # Resize images before publishing in ROS
 # Factor to devide width and height by

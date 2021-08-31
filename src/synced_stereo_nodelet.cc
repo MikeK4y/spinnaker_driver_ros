@@ -81,10 +81,9 @@ void SyncedStereoNodelet::onInit() {
       nh.serviceClient<mavros_msgs::CommandTriggerInterval>(
           "/mavros/cmd/trigger_interval");
 
-  // Setup Subscribers
-  trigger_time_stamp_sub =
-      nh.subscribe("/mavros/cam_imu_sync/cam_imu_stamp", 100,
-                   &SyncedStereoNodelet::triggerStampCallback, this);
+  // Until I figure out how to call the destructor make sure the trigger is off
+  // and reset
+  triggerControl(false, true);
 
   // Setup Publishers
   l_image_pub = image_t.advertise("left_camera/image_raw", 1);
@@ -94,6 +93,11 @@ void SyncedStereoNodelet::onInit() {
   r_image_pub = image_t.advertise("right_camera/image_raw", 1);
   r_cam_info_pub =
       nh.advertise<sensor_msgs::CameraInfo>("right_camera/camera_info", 1);
+
+  // Setup Subscribers
+  trigger_time_stamp_sub =
+      nh.subscribe("/mavros/cam_imu_sync/cam_imu_stamp", 100,
+                   &SyncedStereoNodelet::triggerStampCallback, this);
 
   // Configure cameras and trigger
   if (fps > 1.0 / (1.0e-6 * exp + 0.014)) {

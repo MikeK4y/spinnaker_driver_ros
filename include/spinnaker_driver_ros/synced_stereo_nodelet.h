@@ -9,14 +9,14 @@
 #include "Spinnaker.h"
 
 // ROS
-#include "ros/ros.h"
-#include "nodelet/nodelet.h"
 #include "camera_info_manager/camera_info_manager.h"
 #include "image_transport/image_transport.h"
+#include "nodelet/nodelet.h"
+#include "ros/ros.h"
 
 // ROS messages
-#include "sensor_msgs/image_encodings.h"
 #include "mavros_msgs/CamIMUStamp.h"
+#include "sensor_msgs/image_encodings.h"
 
 // SpinnakerCamera class
 #include "spinnaker_camera.h"
@@ -27,9 +27,7 @@ class SyncedStereoNodelet : public nodelet::Nodelet {
  public:
   /** TODO: Add exceptions to stop constructor if something's not right */
   SyncedStereoNodelet() {}
-  virtual ~SyncedStereoNodelet();
-
-  std::thread frame_grab_worker;
+  ~SyncedStereoNodelet();
 
  private:
   virtual void onInit();
@@ -90,6 +88,7 @@ class SyncedStereoNodelet : public nodelet::Nodelet {
   sensor_msgs::CameraInfo l_cam_info_resized, r_cam_info_resized;
   std::string l_cam_serial, r_cam_serial;
   double fps, exp, gain;
+  std::thread frame_grab_worker;
 
   // Image parameters
   std::vector<mavros_msgs::CamIMUStamp> timestamp_buffer;

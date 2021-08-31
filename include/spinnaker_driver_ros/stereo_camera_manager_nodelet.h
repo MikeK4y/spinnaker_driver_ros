@@ -29,9 +29,7 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
  public:
   /** TODO: Add exceptions to stop constructor if something's not right */
   StereoCameraManagerNodelet() {}
-  virtual ~StereoCameraManagerNodelet();
-
-  std::thread frame_grab_worker;
+  ~StereoCameraManagerNodelet();
 
  private:
   virtual void onInit();
@@ -87,6 +85,7 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
   sensor_msgs::CameraInfo l_cam_info_resized, r_cam_info_resized;
   std::unique_ptr<std::mutex> config_mutex;
   spinnaker_driver_ros::stereoCameraParametersConfig current_config;
+  std::thread frame_grab_worker;
 
   // Image folder
   std::string path_to_images;

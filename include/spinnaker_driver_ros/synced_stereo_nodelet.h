@@ -85,7 +85,6 @@ class SyncedStereoNodelet : public nodelet::Nodelet {
   // Camera parameters
   SpinnakerCamera *l_camera, *r_camera;
   sensor_msgs::CameraInfo l_cam_info, r_cam_info;
-  sensor_msgs::CameraInfo l_cam_info_resized, r_cam_info_resized;
   std::string l_cam_serial, r_cam_serial;
   double fps, exp, gain;
   std::thread frame_grab_worker;
@@ -93,11 +92,7 @@ class SyncedStereoNodelet : public nodelet::Nodelet {
   // Image parameters
   std::vector<mavros_msgs::CamIMUStamp> timestamp_buffer;
   size_t buffer_size;
-  std::string path_to_images;
-  std::ofstream image_list_file;
-  uint32_t frame_count, saved_frame_count, save_percent;
-  double save_rate, resize_factor;
-  ros::Time startTime;
+  uint32_t frame_count;
 };
 
 }  // namespace spinnaker_driver_ros

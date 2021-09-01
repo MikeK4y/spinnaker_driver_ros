@@ -122,14 +122,14 @@ void SpinnakerCamera::setContinuousCapture() {
 }
 
 bool SpinnakerCamera::configure(double exposure, double gain, double fps) {
-  if (setFeature(node_map, "ExposureTime", exposure))
-    std::cout << "Exposure time set to " << exposure << "\n";
+  if (!setFeature(node_map, "ExposureTime", exposure))
+    std::cout << "Could not change Exposure time to " << exposure << "\n";
 
-  if (setFeature(node_map, "Gain", gain))
-    std::cout << "Gain set to " << gain << "\n";
+  if (!setFeature(node_map, "Gain", gain))
+    std::cout << "Could not change Gain to " << gain << "\n";
 
-  if (setFeature(node_map, "AcquisitionFrameRate", fps))
-    std::cout << "Frame rate set to " << fps << "fps\n";
+  if (!setFeature(node_map, "AcquisitionFrameRate", fps))
+    std::cout << "Could not change Frame rate to " << fps << "fps\n";
 
   return true;
 }

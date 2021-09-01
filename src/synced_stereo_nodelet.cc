@@ -13,12 +13,6 @@ PLUGINLIB_EXPORT_CLASS(spinnaker_driver_ros::SyncedStereoNodelet,
                        nodelet::Nodelet);
 
 // Helper Functions
-inline std::string withLeadingZeros(uint64_t i, uint64_t max = 7) {
-  std::ostringstream ss;
-  ss << std::setw(max) << std::setfill('0') << i;
-  return ss.str();
-}
-
 inline sensor_msgs::Image toROSImageMsg(cv::Mat frame, uint32_t sequence,
                                         ros::Time timestamp) {
   cv_bridge::CvImage ros_mat;
@@ -108,21 +102,7 @@ void SyncedStereoNodelet::onInit() {
   l_camera->configure(exp, gain, l_camera->getFPSmax());
   r_camera->configure(exp, gain, r_camera->getFPSmax());
   triggerConfig(fps);
-
-  // Initialize frame capturing
   frame_count = 0;
-  saved_frame_count = 0;
-  if (save_rate > 0.0) {
-    startTime = ros::Time::now();
-    std::string image_list_file_name = path_to_images + "_image_list.csv";
-    image_list_file.open(image_list_file_name);
-    if (image_list_file.is_open()) {
-      image_list_file << "Count,Filename_0,Filename_1,Time_0,Time_1\n";
-    } else {
-      ROS_ERROR("Could not open the image list file");
-      exit(-1);
-    }
-  }
 
   frame_grab_worker =
       std::thread(&SyncedStereoNodelet::publishImagesSync, this);
@@ -131,7 +111,6 @@ void SyncedStereoNodelet::onInit() {
 SyncedStereoNodelet::~SyncedStereoNodelet() {
   triggerControl(false, true);
   frame_grab_worker.join();
-  if (save_rate > 0.0) image_list_file.close();
   delete l_camera, r_camera;
   camera_list.Clear();
   system->ReleaseInstance();
@@ -146,11 +125,7 @@ void SyncedStereoNodelet::loadParameters() {
   nh_lcl.param("frame_rate", fps, 1.0);
   nh_lcl.param("exposure_time", exp, 1.0);
   nh_lcl.param("gain", gain, 0.0);
-  nh_lcl.param("save_rate", save_rate, 0.0);
-  nh_lcl.param("resize_factor", resize_factor, 1.0);
 
-  save_percent = save_rate == 0.0 ? 0.0 : uint32_t(1.0 / save_rate);
-  resize_factor = resize_factor < 1.0 ? 1.0 : resize_factor;
   buffer_size = size_t(2.0 * fps);
 
   nh_lcl.param("left_camera_serial", l_serial, 01234567);
@@ -168,21 +143,17 @@ void SyncedStereoNodelet::loadParameters() {
   camera_info_manager::CameraInfoManager cam_manager(nh_lcl);
   cam_manager.setCameraName("left_camera");
 
-  if (cam_manager.loadCameraInfo(l_camera_info_file)) {
+  if (cam_manager.loadCameraInfo(l_camera_info_file))
     l_cam_info = cam_manager.getCameraInfo();
-    l_cam_info_resized = l_cam_info;
-  } else
+  else
     ROS_ERROR("Could not find left camera calibration file");
 
   cam_manager.setCameraName("right_camera");
 
-  if (cam_manager.loadCameraInfo(r_camera_info_file)) {
+  if (cam_manager.loadCameraInfo(r_camera_info_file))
     r_cam_info = cam_manager.getCameraInfo();
-    r_cam_info_resized = r_cam_info;
-  } else
+  else
     ROS_ERROR("Could not find right camera calibration file");
-
-  nh_lcl.param("path_to_images", path_to_images, std::string("/tmp"));
 }
 
 void SyncedStereoNodelet::publishImagesSync() {
@@ -193,27 +164,16 @@ void SyncedStereoNodelet::publishImagesSync() {
   // Start triggering
   if (triggerControl(true, true)) {
     while (ros::ok()) {
-      bool save_this_frame = false;
-      if (save_rate > 0.0) {
-        save_this_frame = !bool(frame_count % save_percent);
-
-        if (save_this_frame) {
-          l_file_path = path_to_images + "_0_" +
-                        withLeadingZeros(saved_frame_count) + ".tif";
-          r_file_path = path_to_images + "_1_" +
-                        withLeadingZeros(saved_frame_count) + ".tif";
-        }
-      }
-
       std::future<bool> l_image_grab, r_image_grab;
       {  // For async
+        std::string path_to_here = ".";
         l_image_grab = std::async(
             std::launch::async, &SpinnakerCamera::grabFrame, l_camera,
-            std::ref(l_cap), std::ref(l_file_path), 1000, save_this_frame);
+            std::ref(l_cap), std::ref(path_to_here), 1000, false);
 
         r_image_grab = std::async(
             std::launch::async, &SpinnakerCamera::grabFrame, r_camera,
-            std::ref(r_cap), std::ref(r_file_path), 1000, save_this_frame);
+            std::ref(r_cap), std::ref(path_to_here), 1000, false);
       }
 
       if (l_image_grab.get() & r_image_grab.get()) {
@@ -221,45 +181,16 @@ void SyncedStereoNodelet::publishImagesSync() {
         ros::spinOnce();
         ros::Time timestamp;
         if (getTimestamp(frame_count, timestamp)) {
-          if (resize_factor > 1.0) {
-            cv::Mat l_cap_resized, r_cap_resized;
-            cv::resize(l_cap, l_cap_resized, cv::Size(), 1.0 / resize_factor,
-                       1.0 / resize_factor, cv::INTER_LINEAR);
-            cv::resize(r_cap, r_cap_resized, cv::Size(), 1.0 / resize_factor,
-                       1.0 / resize_factor, cv::INTER_LINEAR);
-
-            l_image_pub.publish(
-                toROSImageMsg(l_cap_resized, frame_count, timestamp));
-            r_image_pub.publish(
-                toROSImageMsg(r_cap_resized, frame_count, timestamp));
-            l_cam_info_resized.header.stamp = timestamp;
-            l_cam_info_resized.header.seq = frame_count;
-            r_cam_info_resized.header.stamp = timestamp;
-            r_cam_info_resized.header.seq = frame_count;
-            l_cam_info_pub.publish(l_cam_info_resized);
-            r_cam_info_pub.publish(r_cam_info_resized);
-          } else {
-            l_image_pub.publish(toROSImageMsg(l_cap, frame_count, timestamp));
-            r_image_pub.publish(toROSImageMsg(r_cap, frame_count, timestamp));
-            l_cam_info.header.stamp = timestamp;
-            l_cam_info.header.seq = frame_count;
-            r_cam_info.header.stamp = timestamp;
-            r_cam_info.header.seq = frame_count;
-            l_cam_info_pub.publish(l_cam_info);
-            r_cam_info_pub.publish(r_cam_info);
-          }
-
-          if (save_this_frame) {
-            ros::Duration t_l = l_time - startTime;
-            ros::Duration t_r = r_time - startTime;
-
-            image_list_file << saved_frame_count << ',' << l_file_path << ','
-                            << r_file_path << ',' << t_l.toSec() << ','
-                            << t_r.toSec() << '\n';
-            saved_frame_count++;
-          }
+          l_image_pub.publish(toROSImageMsg(l_cap, frame_count, timestamp));
+          r_image_pub.publish(toROSImageMsg(r_cap, frame_count, timestamp));
+          l_cam_info.header.stamp = timestamp;
+          l_cam_info.header.seq = frame_count;
+          r_cam_info.header.stamp = timestamp;
+          r_cam_info.header.seq = frame_count;
+          l_cam_info_pub.publish(l_cam_info);
+          r_cam_info_pub.publish(r_cam_info);
         } else {
-          ROS_ERROR("Could not find the timestamp for the frame");
+          ROS_ERROR("Dropping frame! Could not find the timestamp");
         }
         frame_count++;
       }

@@ -68,29 +68,29 @@ class imageViewNode():
 
     def digital_zoom(self):
         if self.zoom > 1:
-            height = self.gui_mat.shape[1]
+            height = self.gui_mat.shape[0]
             width = self.gui_mat.shape[1]
-            col_start = int(
-                self.center_point[1] - (height / (2 * self.zoom)))
+
+            col_start = self.center_point[1] - int((height / (2 * self.zoom)))
             if col_start < 0:
                 col_start = 0
 
-            row_start = int(
-                self.center_point[0] - (width / (2 * self.zoom)))
+            row_start = self.center_point[0] - int((width / (2 * self.zoom)))
             if row_start < 0:
                 row_start = 0
 
             zoom_w = int(width / self.zoom)
             zoom_h = int(height / self.zoom)
-            zoom_roi = self.gui_mat[col_start:col_start +
-                                    zoom_w, row_start:row_start+zoom_h]
+            zoom_roi = self.gui_mat[col_start:col_start + zoom_w,
+                                    row_start:row_start + zoom_h]
             self.gui_mat = cv.resize(
-                zoom_roi, [width, height], interpolation=cv.INTER_NEAREST)
-    
+                zoom_roi, (width, height), interpolation=cv.INTER_NEAREST)
+
     def get_hist(self):
-      hist = cv.calcHist([self.gui_mat], [0], None, [256], [0, 256])
-      plt.plot(hist)
-      plt.show()
+        self.show_hist = False
+        hist = cv.calcHist([self.gui_mat], [0], None, [256], [0, 256])
+        plt.plot(hist)
+        plt.show()
 
     def show_gui(self):
         main_window = "DIC feed"
@@ -107,7 +107,7 @@ class imageViewNode():
             self.digital_zoom()
 
             if self.show_hist:
-              self.get_hist()
+                self.get_hist()
 
             # Show image
             cv.imshow(main_window, self.gui_mat)
@@ -119,7 +119,7 @@ class imageViewNode():
             elif key == ord('c'):
                 self.show_left = not self.show_left
             elif key == ord('h'):
-                self.show_hist = not self.show_hist
+                self.show_hist = True
 
         cv.destroyAllWindows()
 

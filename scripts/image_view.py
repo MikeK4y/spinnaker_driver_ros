@@ -120,6 +120,8 @@ class imageViewNode():
                 self.show_left = not self.show_left
             elif key == ord('h'):
                 self.show_hist = True
+            elif key == ord('q'):
+                break
 
         cv.destroyAllWindows()
 

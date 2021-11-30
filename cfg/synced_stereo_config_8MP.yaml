@@ -1,0 +1,25 @@
+# Camera Serial Numbers
+left_camera_serial: 21119620
+right_camera_serial: 21408379
+
+# Camera Calibration files
+left_camera_info_url: package://spinnaker_driver_ros/cfg/left_camera.yaml
+right_camera_info_url: package://spinnaker_driver_ros/cfg/right_camera.yaml
+
+# Camera Configuration
+# To make sure that the triggers will all be implemented the
+# frame rate and exposure time should follow:
+# frame_rate <= 1.0 / (0.014 + exposure_time * 1.0e-6)
+frame_rate: 2.0
+exposure_time: 5000.0 # in microseconds
+gain: 0.0
+
+# Resize images before publishing in ROS
+# Factor to devide width and height by
+resize_factor: 1.0
+
+# Raw image save rate
+save_rate: 0.0
+
+# Path to DIC images
+path_to_images: /tmp/test

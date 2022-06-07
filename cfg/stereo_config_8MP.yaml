@@ -3,8 +3,8 @@ left_camera_serial: 21119620
 right_camera_serial: 21408379
 
 # Camera Calibration files
-left_camera_info_url: package://spinnaker_driver_ros/cfg/left_camera.yaml
-right_camera_info_url: package://spinnaker_driver_ros/cfg/right_camera.yaml
+left_camera_info_url: package://spinnaker_driver_ros/cfg/left_camera_8MP.yaml
+right_camera_info_url: package://spinnaker_driver_ros/cfg/right_camera_8MP.yaml
 
 # Path to DIC images
 path_to_images: /tmp/test

@@ -8,6 +8,7 @@
 #include "cv_bridge/cv_bridge.h"
 #include "mavros_msgs/CommandTriggerControl.h"
 #include "mavros_msgs/CommandTriggerInterval.h"
+#include "std_msgs/Float32.h"
 
 PLUGINLIB_EXPORT_CLASS(spinnaker_driver_ros::SyncedStereoNodelet,
                        nodelet::Nodelet);
@@ -88,6 +89,8 @@ void SyncedStereoNodelet::onInit() {
   r_cam_info_pub =
       nh.advertise<sensor_msgs::CameraInfo>("right_camera/camera_info", 1);
 
+  cam_exp_pub = nh.advertise<std_msgs::Float32>("camera_exposure", 1);
+
   // Setup Subscribers
   trigger_time_stamp_sub =
       nh.subscribe("/mavros/cam_imu_sync/cam_imu_stamp", 100,
@@ -158,6 +161,7 @@ void SyncedStereoNodelet::loadParameters() {
 
 void SyncedStereoNodelet::publishImagesSync() {
   // Image handles
+  std_msgs::Float32 exp_msg;
   cv::Mat l_cap, r_cap;
   ros::Time l_time, r_time;
   std::string l_file_path, r_file_path;
@@ -189,6 +193,8 @@ void SyncedStereoNodelet::publishImagesSync() {
           r_cam_info.header.seq = frame_count;
           l_cam_info_pub.publish(l_cam_info);
           r_cam_info_pub.publish(r_cam_info);
+          exp_msg.data = exp;
+          cam_exp_pub.publish(exp_msg);
         } else {
           ROS_ERROR("Dropping frame! Could not find the timestamp");
         }

@@ -70,7 +70,7 @@ class SyncedStereoNodelet : public nodelet::Nodelet {
 
   // ROS Publishers
   image_transport::Publisher l_image_pub, r_image_pub;
-  ros::Publisher l_cam_info_pub, r_cam_info_pub;
+  ros::Publisher l_cam_info_pub, r_cam_info_pub, cam_exp_pub;
 
   // ROS Subscribers
   ros::Subscriber trigger_time_stamp_sub;

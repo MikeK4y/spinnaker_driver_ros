@@ -30,6 +30,22 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
     return false;
   }
 
+  // Check Camera model
+  bool isBFS = false;
+  Spinnaker::GenApi::CStringPtr device_name =
+      device_node_map->GetNode("DeviceModelName");
+  std::string model_name(device_name->ToString());
+
+  if (model_name.find("Blackfly S") != std::string::npos)
+    isBFS = true;
+  else if (model_name.find("Blackfly") != std::string::npos)
+    isBFS = false;
+  else {
+    std::cerr << "Camera " << camera_serial
+              << " is neither a Blackfly S nor a Blackfly\n";
+    return false;
+  }
+
   // Setup some basic configuration
   std::string stream_buffer_handling_mode = "NewestOnly";
   std::string acquisition_mode = "Continuous";
@@ -51,8 +67,17 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
   if (setFeature(node_map, "GainAuto", gain_auto_mode))
     std::cout << "Auto Gain set to off\n";
 
-  if (setFeature(node_map, "AcquisitionFrameRateEnable", true))
-    std::cout << "Enabled Frame Rate Control\n";
+  if (isBFS) {
+    if (setFeature(node_map, "AcquisitionFrameRateEnable", true))
+      std::cout << "Enabled Frame Rate Control\n";
+  } else {
+    if (setFeature(node_map, "AcquisitionFrameRateControlEnabled", true))
+      std::cout << "Enabled Frame Rate Control\n";
+
+    std::string frame_rate_auto_mode = "Off";
+    if (setFeature(node_map, "FrameRateAuto", frame_rate_auto_mode))
+      std::cout << "Auto Frame Rate set to off\n";
+  }
 
   if (setFeature(node_map, "TriggerSource", trigger_source))
     std::cout << trigger_source << " was set as the trigger source\n";

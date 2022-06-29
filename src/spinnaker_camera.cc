@@ -55,6 +55,16 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
   std::string trigger_source = "Line0";
   std::string trigger_activation = "RisingEdge";
 
+  if (isBFS) {
+    if (setFeature(node_map, "AcquisitionFrameRateEnable", true))
+      std::cout << "Enabled Frame Rate Control\n";
+  } else {
+    if (setFeature(node_map, "AcquisitionFrameRateEnabled", true))
+      std::cout << "Enabled Frame Rate Control\n";
+    if (setFeature(node_map, "AcquisitionFrameRateAuto", frame_rate_auto_mode))
+      std::cout << "Auto Acquisition Frame Rate set to off\n";
+  }
+
   if (setFeature(stream_node_map, "StreamBufferHandlingMode",
                  stream_buffer_handling_mode))
     std::cout << "Stream buffer handling mode set to Newest Only\n";
@@ -67,12 +77,6 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
 
   if (setFeature(node_map, "GainAuto", gain_auto_mode))
     std::cout << "Auto Gain set to off\n";
-
-  if (setFeature(node_map, "AcquisitionFrameRateEnable", true))
-    std::cout << "Enabled Frame Rate Control\n";
-
-  if (setFeature(node_map, "FrameRateAuto", frame_rate_auto_mode))
-    std::cout << "Auto Frame Rate set to off\n";
 
   if (setFeature(node_map, "TriggerSource", trigger_source))
     std::cout << trigger_source << " was set as the trigger source\n";

@@ -17,9 +17,13 @@ inline bool setFeature(Spinnaker::GenApi::INodeMap* node_map,
   Spinnaker::GenApi::CEnumerationPtr feature_ptr =
       node_map->GetNode(feature_name.c_str());
 
-  if (!Spinnaker::GenApi::IsAvailable(feature_ptr) ||
-      !Spinnaker::GenApi::IsWritable(feature_ptr)) {
-    std::cerr << feature_name << " is not Available/Writable\n";
+  if (!Spinnaker::GenApi::IsAvailable(feature_ptr)) {
+    std::cerr << feature_name << " is not Available\n";
+    return false;
+  }
+
+  if (!Spinnaker::GenApi::IsWritable(feature_ptr)) {
+    std::cerr << feature_name << " is not Writable\n";
     return false;
   }
 
@@ -43,9 +47,13 @@ inline bool setFeature(Spinnaker::GenApi::INodeMap* node_map,
   Spinnaker::GenApi::CFloatPtr feature_ptr =
       node_map->GetNode(feature_name.c_str());
 
-  if (!Spinnaker::GenApi::IsAvailable(feature_ptr) ||
-      !Spinnaker::GenApi::IsWritable(feature_ptr)) {
-    std::cerr << feature_name << " is not Available/Writable\n";
+  if (!Spinnaker::GenApi::IsAvailable(feature_ptr)) {
+    std::cerr << feature_name << " is not Available\n";
+    return false;
+  }
+
+  if (!Spinnaker::GenApi::IsWritable(feature_ptr)) {
+    std::cerr << feature_name << " is not Writable\n";
     return false;
   }
 
@@ -65,9 +73,13 @@ inline bool setFeature(Spinnaker::GenApi::INodeMap* node_map,
   Spinnaker::GenApi::CIntegerPtr feature_ptr =
       node_map->GetNode(feature_name.c_str());
 
-  if (!Spinnaker::GenApi::IsAvailable(feature_ptr) ||
-      !Spinnaker::GenApi::IsWritable(feature_ptr)) {
-    std::cerr << feature_name << " is not Available/Writable\n";
+  if (!Spinnaker::GenApi::IsAvailable(feature_ptr)) {
+    std::cerr << feature_name << " is not Available\n";
+    return false;
+  }
+
+  if (!Spinnaker::GenApi::IsWritable(feature_ptr)) {
+    std::cerr << feature_name << " is not Writable\n";
     return false;
   }
 
@@ -87,9 +99,20 @@ inline bool setFeature(Spinnaker::GenApi::INodeMap* node_map,
   Spinnaker::GenApi::CBooleanPtr feature_ptr =
       node_map->GetNode(feature_name.c_str());
 
-  if (!Spinnaker::GenApi::IsAvailable(feature_ptr) ||
-      !Spinnaker::GenApi::IsWritable(feature_ptr)) {
-    std::cerr << feature_name << " is not Available/Writable\n";
+  if (!Spinnaker::GenApi::IsReadable(feature_ptr)) {
+    if (feature_ptr->GetValue() == feature_value) {
+      std::cout << feature_name << " already set to desired value\n";
+      return true;
+    }
+  }
+
+  if (!Spinnaker::GenApi::IsAvailable(feature_ptr)) {
+    std::cerr << feature_name << " is not Available\n";
+    return false;
+  }
+
+  if (!Spinnaker::GenApi::IsWritable(feature_ptr)) {
+    std::cerr << feature_name << " is not Writable\n";
     return false;
   }
 

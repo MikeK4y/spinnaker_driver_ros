@@ -114,6 +114,8 @@ void SyncedStereoNodelet::onInit() {
 SyncedStereoNodelet::~SyncedStereoNodelet() {
   triggerControl(false, true);
   frame_grab_worker.join();
+  l_camera->stopAcquisition();
+  r_camera->stopAcquisition();
   delete l_camera, r_camera;
   camera_list.Clear();
   system->ReleaseInstance();

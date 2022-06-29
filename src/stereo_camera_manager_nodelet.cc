@@ -124,6 +124,8 @@ void StereoCameraManagerNodelet::onInit() {
 StereoCameraManagerNodelet::~StereoCameraManagerNodelet() {
   frame_grab_worker.join();
   image_list_file.close();
+  l_camera->stopAcquisition();
+  r_camera->stopAcquisition();
   delete l_camera, r_camera;
   camera_list.Clear();
   system->ReleaseInstance();

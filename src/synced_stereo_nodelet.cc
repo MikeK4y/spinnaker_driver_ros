@@ -57,6 +57,9 @@ void SyncedStereoNodelet::onInit() {
     exit(-1);
   }
 
+  l_camera->configure(exp, gain, l_camera->getFPSmax());
+  r_camera->configure(exp, gain, r_camera->getFPSmax());
+
   // Set cameras to hardware triggering
   l_camera->setHardwareTrigger();
   r_camera->setHardwareTrigger();
@@ -102,8 +105,6 @@ void SyncedStereoNodelet::onInit() {
     ROS_WARN("Selected frame rate is too high. Frame rate will be set to %f",
              fps);
   }
-  l_camera->configure(exp, gain, l_camera->getFPSmax());
-  r_camera->configure(exp, gain, r_camera->getFPSmax());
   triggerConfig(fps);
   frame_count = 0;
 

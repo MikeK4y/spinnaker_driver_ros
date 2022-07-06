@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fstream>
 #include <future>
 #include <mutex>
 #include <thread>
@@ -48,20 +47,6 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
       spinnaker_driver_ros::stereoCameraParametersConfig &config,
       uint32_t level);
 
-  /**
-   * @brief Use MavROS Service to control camera hardware triggering
-   * @param enable Enable or disable trigger
-   * @returns True if successful
-   */
-  bool triggerControl(bool enable);
-
-  /**
-   * @brief Use MavROS Service to configure hardware triggering
-   * @param fps Trigger rate
-   * @returns True if successful
-   */
-  bool triggerConfig(double fps);
-
   // Dynamic Reconfigure Server
   dynamic_reconfigure::Server<
       spinnaker_driver_ros::stereoCameraParametersConfig>
@@ -69,35 +54,24 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
 
   // Publishers
   image_transport::Publisher l_image_pub, r_image_pub;
-  ros::Publisher l_cam_info_pub, r_cam_info_pub;
-
-  // ROS Services
-  ros::ServiceClient pixhawk_trigger_ctrl, pixhawk_trigger_config;
+  ros::Publisher l_cam_info_pub, r_cam_info_pub, cam_exp_pub, cam_gain_pub;
 
   // Spinnaker handles
   Spinnaker::SystemPtr system;
   Spinnaker::CameraList camera_list;
 
   // Camera parameters
-  std::string l_cam_serial, r_cam_serial;
   SpinnakerCamera *l_camera, *r_camera;
   sensor_msgs::CameraInfo l_cam_info, r_cam_info;
   sensor_msgs::CameraInfo l_cam_info_resized, r_cam_info_resized;
+  std::string l_cam_serial, r_cam_serial;
   std::unique_ptr<std::mutex> config_mutex;
   spinnaker_driver_ros::stereoCameraParametersConfig current_config;
   std::thread frame_grab_worker;
-
-  // Image folder
-  std::string path_to_images;
-  std::ofstream image_list_file;
   uint64_t frame_count;
-  uint64_t saved_frame_count;
-  uint64_t save_percent;
   double resize_factor;
-  bool save_images;
   bool resize_images;
-  bool is_hardware_trigger;
-  ros::Time startTime;
+  ros::Rate *frame_rate;
 };
 
 }  // namespace spinnaker_driver_ros

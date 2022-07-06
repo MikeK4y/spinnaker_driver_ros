@@ -3,14 +3,18 @@
 #include "spinnaker_driver_ros/set_camera_feature.h"
 
 SpinnakerCamera::SpinnakerCamera(std::string serial, std::string id)
-    : acquisition_started(false), camera_serial(serial), camera_id(id) {}
+    : acquisition_started(false), camera_serial(serial), camera_id(id) {
+  // Default BFS to true
+  is_BFS = true;
+}
 
 SpinnakerCamera::~SpinnakerCamera() {
   camera_pointer->DeInit();
   delete camera_pointer;
 }
 
-bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
+bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list,
+                              bool HW_trigger) {
   try {
     camera_pointer = camera_list.GetBySerial(camera_serial);
   } catch (const Spinnaker::Exception &e) {
@@ -31,15 +35,14 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
   }
 
   // Check Camera model
-  bool isBFS = false;
   Spinnaker::GenApi::CStringPtr device_name =
       device_node_map->GetNode("DeviceModelName");
   std::string model_name(device_name->ToString());
 
   if (model_name.find("Blackfly S") != std::string::npos)
-    isBFS = true;
+    is_BFS = true;
   else if (model_name.find("Blackfly") != std::string::npos)
-    isBFS = false;
+    is_BFS = false;
   else {
     std::cerr << "Camera " << camera_serial
               << " is neither a Blackfly S nor a Blackfly\n";
@@ -53,28 +56,25 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
   std::string gain_auto_mode = "Off";
   std::string frame_rate_auto_mode = "Off";
   std::string trigger_mode = "Off";
-  std::string trigger_source = "Line0";
-  std::string trigger_activation = "RisingEdge";
+  std::string trigger_selector_mode = "FrameStart";
 
   if (setFeature(node_map, "TriggerMode", trigger_mode))
     std::cout << "Trigger Mode was set to off\n";
 
-  if (isBFS) {
+  if (is_BFS) {
     if (setFeature(node_map, "AcquisitionFrameRateEnable", true))
       std::cout << "Enabled Frame Rate Control\n";
   } else {
     if (setFeature(node_map, "AcquisitionFrameRateEnabled", true))
       std::cout << "Enabled Frame Rate Control\n";
-    if (setFeature(node_map, "AcquisitionFrameRateAuto", frame_rate_auto_mode))
-      std::cout << "Auto Acquisition Frame Rate set to off\n";
   }
+
+  if (setFeature(node_map, "AcquisitionFrameRateAuto", frame_rate_auto_mode))
+    std::cout << "Auto Acquisition Frame Rate set to off\n";
 
   if (setFeature(stream_node_map, "StreamBufferHandlingMode",
                  stream_buffer_handling_mode))
     std::cout << "Stream buffer handling mode set to Newest Only\n";
-
-  if (setFeature(node_map, "AcquisitionMode", acquisition_mode))
-    std::cout << "Acquisition mode set to continuous\n";
 
   if (setFeature(node_map, "ExposureAuto", exposure_auto_mode))
     std::cout << "Auto Exposure set to off\n";
@@ -82,11 +82,39 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list) {
   if (setFeature(node_map, "GainAuto", gain_auto_mode))
     std::cout << "Auto Gain set to off\n";
 
-  if (setFeature(node_map, "TriggerSource", trigger_source))
-    std::cout << trigger_source << " was set as the trigger source\n";
+  if (setFeature(node_map, "TriggerSelector", trigger_selector_mode))
+    std::cout << "Trigger Selector set to Frame Start\n";
 
-  if (setFeature(node_map, "TriggerActivation", trigger_activation))
-    std::cout << "Trigger activated on the " << trigger_activation << '\n';
+  if (HW_trigger) {
+    std::string trigger_source = "Line0";
+    std::string trigger_activation = "RisingEdge";
+
+    if (setFeature(node_map, "TriggerSource", trigger_source))
+      std::cout << trigger_source << " was set as the trigger source\n";
+
+    if (setFeature(node_map, "TriggerActivation", trigger_activation))
+      std::cout << "Trigger activated on the " << trigger_activation << '\n';
+  } else {
+    std::string trigger_source = "Software";
+
+    if (setFeature(node_map, "TriggerSource", trigger_source))
+      std::cout << trigger_source << " was set as the trigger source\n";
+
+    software_trigger_ptr = node_map->GetNode("TriggerSoftware");
+
+    // if (!Spinnaker::GenApi::IsAvailable(software_trigger_ptr)) {
+    //   std::cerr << "Software trigger is not Available\n";
+    //   return false;
+    // }
+
+    // if (!Spinnaker::GenApi::IsWritable(software_trigger_ptr)) {
+    //   std::cerr << "Software trigger is not Writable\n";
+    //   return false;
+    // }
+  }
+
+  if (setFeature(node_map, "AcquisitionMode", acquisition_mode))
+    std::cout << "Acquisition mode set to continuous\n";
 
   // Get min-max values for frame rate, exposure and gain
   getMinMaxValues();
@@ -135,19 +163,14 @@ bool SpinnakerCamera::stopAcquisition() {
   return true;
 }
 
-void SpinnakerCamera::setHardwareTrigger() {
-  std::string trigger_mode = "On";
+void SpinnakerCamera::enableTriggering(bool enable) {
+  std::string trigger_mode = enable ? "On" : "Off";
 
   if (setFeature(node_map, "TriggerMode", trigger_mode))
-    std::cout << "Enabled triggering\n";
+    std::cout << "Triggering set to " << trigger_mode << "\n";
 }
 
-void SpinnakerCamera::setContinuousCapture() {
-  std::string trigger_mode = "Off";
-
-  if (setFeature(node_map, "TriggerMode", trigger_mode))
-    std::cout << "Enabled continuous Acquisition\n";
-}
+void SpinnakerCamera::softwareTrigger() { software_trigger_ptr->Execute(); }
 
 bool SpinnakerCamera::configure(double exposure, double gain, double fps) {
   if (!setFeature(node_map, "ExposureTime", exposure))
@@ -174,8 +197,7 @@ bool SpinnakerCamera::setFPS(double fps) {
   return setFeature(node_map, "AcquisitionFrameRate", fps);
 }
 
-bool SpinnakerCamera::grabFrame(cv::Mat &frame, std::string &file_name,
-                                uint64_t delay, bool save_frame) {
+bool SpinnakerCamera::grabFrame(cv::Mat &frame, uint64_t delay) {
   if (acquisition_started) {
     try {
       Spinnaker::ImagePtr spin_image_raw = camera_pointer->GetNextImage(delay);
@@ -188,11 +210,6 @@ bool SpinnakerCamera::grabFrame(cv::Mat &frame, std::string &file_name,
         size_t bits_per_pixel = spin_image_raw->GetBitsPerPixel();
 
         if (bits_per_pixel == 8) {
-          // Save Image
-          if (save_frame) {
-            spin_image_raw->Save(file_name.c_str());
-          }
-
           // Convert to CV Mat
           frame = cv::Mat(
               spin_image_raw->GetHeight() + spin_image_raw->GetYPadding(),

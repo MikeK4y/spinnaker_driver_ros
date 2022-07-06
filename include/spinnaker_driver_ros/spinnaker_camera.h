@@ -19,13 +19,16 @@ class SpinnakerCamera {
   ~SpinnakerCamera();
 
   /** @brief Establishes connection to the camera specified by the serial number
-   * Also, it initializes the camera by setting the auto exposure to off, auto
-   * gain to off, the buffer handling to newest, acquisition mode to continuous,
-   * triggering to Line 0 on the rising edge and enables frame rate control
+   * Also, it does basic camera initialization to allow SW and HW triggering.
+   * It enables frame rate control, sets the auto exposure to off, auto gain to
+   * off and the buffer handling to newest. If HW_trigger is true, then it
+   * configures the cameras to receive trigger signals in line 0 and trigger at
+   * the rising edge. If HW_trigger is false, then it sets the trigger to SW
    * @param camera_list List of available cameras
+   * @param HW_trigger Enable HW trigger. If false, it enables SW triggers
    * @returns True if successful
    */
-  bool connect(Spinnaker::CameraList camera_list);
+  bool connect(Spinnaker::CameraList camera_list, bool HW_trigger);
 
   /** @brief Terminates connection to the camera
    * @returns True if successful
@@ -43,14 +46,15 @@ class SpinnakerCamera {
   bool stopAcquisition();
 
   /**
-   * @brief Sets the cameras for hardware triggering
+   * @brief Enables triggering for camera
+   * @param enable If true enables triggering if false it disables it
    */
-  void setHardwareTrigger();
+  void enableTriggering(bool enable);
 
   /**
-   * @brief Sets the cameras for continuous acquisition
+   * @brief Executes a software trigger for the camera
    */
-  void setContinuousCapture();
+  void softwareTrigger();
 
   /** @brief Configures the camera.
    * @param exposure Exposure time
@@ -80,13 +84,10 @@ class SpinnakerCamera {
 
   /** @brief Grabs any available image from the camera buffer
    * @param frame A pointer to an OpenCV Mat of the frame
-   * @param file_name File name with full path to save the captured frame
    * @param delay How many milliseconds should it wait to grab the frame
-   * @param save_frame Saves the grabbed image if true
    * @returns True if successful
    */
-  bool grabFrame(cv::Mat& frame, std::string& file_name, uint64_t delay = 1000,
-                 bool save_frame = false);
+  bool grabFrame(cv::Mat& frame, uint64_t delay = 1000);
 
   /** @brief Returns the Camera Serial Number
    * @returns Camera Serial Number
@@ -138,8 +139,10 @@ class SpinnakerCamera {
   Spinnaker::GenApi::INodeMap* node_map;
   Spinnaker::GenApi::INodeMap* stream_node_map;
   Spinnaker::GenApi::INodeMap* device_node_map;
+  Spinnaker::GenApi::CCommandPtr software_trigger_ptr;
 
   // Camera parameters
+  bool is_BFS;
   double fps_max, fps_min, exp_max, exp_min, gain_max, gain_min;
   std::string camera_id;
   std::string camera_serial;

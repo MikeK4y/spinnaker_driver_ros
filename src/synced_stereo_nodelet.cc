@@ -49,20 +49,25 @@ void SyncedStereoNodelet::onInit() {
 
   // Connect to cameras
   l_camera = new SpinnakerCamera(l_cam_serial, "left_camera");
-  r_camera = new SpinnakerCamera(r_cam_serial, "right_camera");
+  if (!l_camera->connect(camera_list, true)) {
+    ROS_ERROR("Could not connect to the camera with the serial number: %s",
+              l_cam_serial.c_str());
+    exit(-1);
+  }
 
-  if (!l_camera->connect(camera_list) || !r_camera->connect(camera_list)) {
-    ROS_ERROR(
-        "Could not connect to the cameras with the provided serial numbers");
+  r_camera = new SpinnakerCamera(r_cam_serial, "right_camera");
+  if (!r_camera->connect(camera_list, true)) {
+    ROS_ERROR("Could not connect to the camera with the serial number: %s",
+              r_cam_serial.c_str());
     exit(-1);
   }
 
   l_camera->configure(exp, gain, l_camera->getFPSmax());
   r_camera->configure(exp, gain, r_camera->getFPSmax());
 
-  // Set cameras to hardware triggering
-  l_camera->setHardwareTrigger();
-  r_camera->setHardwareTrigger();
+  // Enable camera triggering
+  l_camera->enableTriggering(true);
+  r_camera->enableTriggering(true);
 
   // Start acquisition
   if (l_camera->startAcquisition()) std::cout << "Left camera connected\n";
@@ -115,8 +120,8 @@ void SyncedStereoNodelet::onInit() {
 SyncedStereoNodelet::~SyncedStereoNodelet() {
   triggerControl(false, true);
   frame_grab_worker.join();
-  l_camera->stopAcquisition();
-  r_camera->stopAcquisition();
+  l_camera->disconnect();
+  r_camera->disconnect();
   delete l_camera, r_camera;
   camera_list.Clear();
   system->ReleaseInstance();
@@ -167,20 +172,18 @@ void SyncedStereoNodelet::publishImagesSync() {
   std_msgs::Float32 exp_msg;
   cv::Mat l_cap, r_cap;
   ros::Time l_time, r_time;
-  std::string l_file_path, r_file_path;
   // Start triggering
   if (triggerControl(true, true)) {
     while (ros::ok()) {
       std::future<bool> l_image_grab, r_image_grab;
-      {  // For async
-        std::string path_to_here = ".";
+      {
         l_image_grab = std::async(
             std::launch::async, &SpinnakerCamera::grabFrame, l_camera,
-            std::ref(l_cap), std::ref(path_to_here), 1000, false);
+            std::ref(l_cap), 1000);
 
         r_image_grab = std::async(
             std::launch::async, &SpinnakerCamera::grabFrame, r_camera,
-            std::ref(r_cap), std::ref(path_to_here), 1000, false);
+            std::ref(r_cap), 1000);
       }
 
       if (l_image_grab.get() & r_image_grab.get()) {

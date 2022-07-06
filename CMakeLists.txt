@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(spinnaker_driver_ros)
 
 add_compile_options(-std=c++14)
+add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
 set(CMAKE_BUILD_TYPE Release)
 
 ## Find catkin macros and libraries

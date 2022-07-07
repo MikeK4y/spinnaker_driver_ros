@@ -56,7 +56,6 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list,
   std::string acquisition_mode = "Continuous";
   std::string exposure_auto_mode = "Off";
   std::string gain_auto_mode = "Off";
-  std::string frame_rate_auto_mode = "Off";
   std::string trigger_mode = "Off";
   std::string trigger_selector_mode = "FrameStart";
 
@@ -67,12 +66,12 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list,
     if (setFeature(node_map, "AcquisitionFrameRateEnable", true))
       std::cout << "Enabled Frame Rate Control\n";
   } else {
+    std::string frame_rate_auto_mode = "Off";
     if (setFeature(node_map, "AcquisitionFrameRateEnabled", true))
       std::cout << "Enabled Frame Rate Control\n";
-  }
-
-  if (setFeature(node_map, "AcquisitionFrameRateAuto", frame_rate_auto_mode))
+    if (setFeature(node_map, "AcquisitionFrameRateAuto", frame_rate_auto_mode))
     std::cout << "Auto Acquisition Frame Rate set to off\n";
+  }
 
   if (setFeature(stream_node_map, "StreamBufferHandlingMode",
                  stream_buffer_handling_mode))

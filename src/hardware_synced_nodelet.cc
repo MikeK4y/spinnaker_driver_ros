@@ -166,7 +166,9 @@ void HardwareSyncedNodelet::loadParameters() {
 
 void HardwareSyncedNodelet::publishImagesSync() {
   // Make sure trigger is reset and stopped before starting the cameras
-  while (!triggerControl(false, true))
+  while (!triggerControl(false, true)) {
+    ROS_WARN("Cannot reset HW Trigger");
+  }
   ROS_INFO("HW Trigger was reset");
 
   // Enable camera triggering
@@ -255,7 +257,7 @@ void HardwareSyncedNodelet::triggerStampCallback(
 }
 
 bool HardwareSyncedNodelet::getTimestamp(uint32_t frame_index,
-                                       ros::Time &timestamp) {
+                                         ros::Time &timestamp) {
   if (timestamp_buffer.size() < 1) {
     return false;
   } else {

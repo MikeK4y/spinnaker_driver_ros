@@ -40,7 +40,7 @@
   <exec_depend>sensor_msgs</exec_depend>
 
   <export>
-    <nodelet plugin="${prefix}/sw_trigger_nodelet_plugins.xml"/>
-    <nodelet plugin="${prefix}/hw_trigger_nodelet_plugins.xml"/>
+    <nodelet plugin="${prefix}/software_synced_nodelet_plugins.xml"/>
+    <nodelet plugin="${prefix}/hardware_synced_nodelet_plugins.xml"/>
   </export>
 </package>

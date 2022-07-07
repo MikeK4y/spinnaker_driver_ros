@@ -60,34 +60,34 @@ add_library(spinnaker_camera
 )
 
 # SW trigger nodelet library
-add_library(sw_trigger_nodelet
-  src/sw_trigger_nodelet.cc
+add_library(software_synced_nodelet
+  src/software_synced_nodelet.cc
 )
 
 # SW trigger nodelet runnable
-add_executable(sw_trigger_nodelet_runnable
-  src/sw_trigger_nodelet_main.cc
+add_executable(software_synced_nodelet_runnable
+  src/software_synced_nodelet_main.cc
 )
 
 # HW trigger nodelet library
-add_library(hw_trigger_nodelet
-  src/hw_trigger_nodelet.cc
+add_library(hardware_synced_nodelet
+  src/hardware_synced_nodelet.cc
 )
 
 # HW trigger nodelet runnable
-add_executable(hw_trigger_nodelet_runnable
-  src/hw_trigger_nodelet_main.cc
+add_executable(hardware_synced_nodelet_runnable
+  src/hardware_synced_nodelet_main.cc
 )
 
 ##################
 ## Dependencies ##
 ##################
 
-add_dependencies(sw_trigger_nodelet
+add_dependencies(software_synced_nodelet
   ${catkin_EXPORTED_TARGETS}
 )
 
-add_dependencies(hw_trigger_nodelet
+add_dependencies(hardware_synced_nodelet
   ${catkin_EXPORTED_TARGETS}
 )
 
@@ -100,24 +100,24 @@ target_link_libraries(spinnaker_camera
   ${Spinnaker_LIBS}
 )
 
-target_link_libraries(sw_trigger_nodelet
+target_link_libraries(software_synced_nodelet
   ${catkin_LIBRARIES}
   ${Spinnaker_LIBS}
   spinnaker_camera
 )
 
-target_link_libraries(sw_trigger_nodelet_runnable
-sw_trigger_nodelet
+target_link_libraries(software_synced_nodelet_runnable
+software_synced_nodelet
 )
 
-target_link_libraries(hw_trigger_nodelet
+target_link_libraries(hardware_synced_nodelet
   ${catkin_LIBRARIES}
   ${Spinnaker_LIBS}
   spinnaker_camera
 )
 
-target_link_libraries(hw_trigger_nodelet_runnable
-hw_trigger_nodelet
+target_link_libraries(hardware_synced_nodelet_runnable
+hardware_synced_nodelet
 )
 
 #############
@@ -125,8 +125,8 @@ hw_trigger_nodelet
 #############
 
 install(FILES
-  sw_trigger_nodelet_plugins.xml
-  hw_trigger_nodelet_plugins.xml
+  software_synced_nodelet_plugins.xml
+  hardware_synced_nodelet_plugins.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
@@ -135,8 +135,8 @@ install(DIRECTORY cfg launch
 )
 
 install(TARGETS
-  sw_trigger_nodelet_runnable
-  hw_trigger_nodelet_runnable
+  software_synced_nodelet_runnable
+  hardware_synced_nodelet_runnable
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

@@ -1,0 +1,9 @@
+<library path="lib/libsoftware_synced_nodelet">
+  <class name="spinnaker_driver_ros/software_synced_nodelet"
+         type="spinnaker_driver_ros::SoftwareSyncedNodelet"
+         base_class_type="nodelet::Nodelet">
+    <description>
+      Synced Stereo with Software Triggering ROS nodelet.
+    </description>
+  </class>
+</library>

@@ -24,11 +24,11 @@
 
 namespace spinnaker_driver_ros {
 
-class SoftwareSyncedStereoNodelet : public nodelet::Nodelet {
+class SoftwareSyncedNodelet : public nodelet::Nodelet {
  public:
   /** TODO: Add exceptions to stop constructor if something's not right */
-  SoftwareSyncedStereoNodelet() {}
-  ~SoftwareSyncedStereoNodelet();
+  SoftwareSyncedNodelet() {}
+  ~SoftwareSyncedNodelet();
 
  private:
   virtual void onInit();

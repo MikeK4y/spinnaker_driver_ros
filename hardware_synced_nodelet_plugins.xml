@@ -1,0 +1,9 @@
+<library path="lib/libhardware_synced_nodelet">
+  <class name="spinnaker_driver_ros/hardware_synced_nodelet"
+         type="spinnaker_driver_ros::HardwareSyncedNodelet"
+         base_class_type="nodelet::Nodelet">
+    <description>
+      Synced Stereo with Hardware Triggering ROS nodelet.
+    </description>
+  </class>
+</library>

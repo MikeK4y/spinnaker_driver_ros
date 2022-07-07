@@ -40,7 +40,7 @@
   <exec_depend>sensor_msgs</exec_depend>
 
   <export>
-    <nodelet plugin="${prefix}/stereo_camera_manager_nodelet_plugins.xml"/>
-    <nodelet plugin="${prefix}/synced_stereo_nodelet_plugins.xml"/>
+    <nodelet plugin="${prefix}/sw_trigger_nodelet_plugins.xml"/>
+    <nodelet plugin="${prefix}/hw_trigger_nodelet_plugins.xml"/>
   </export>
 </package>

@@ -1,4 +1,4 @@
-#include "spinnaker_driver_ros/synced_stereo_nodelet.h"
+#include "spinnaker_driver_ros/hw_trigger_nodelet.h"
 
 #include <functional>
 
@@ -10,7 +10,7 @@
 #include "mavros_msgs/CommandTriggerInterval.h"
 #include "std_msgs/Float32.h"
 
-PLUGINLIB_EXPORT_CLASS(spinnaker_driver_ros::SyncedStereoNodelet,
+PLUGINLIB_EXPORT_CLASS(spinnaker_driver_ros::HardwareSyncedStereoNodelet,
                        nodelet::Nodelet);
 
 // Helper Functions
@@ -31,7 +31,7 @@ inline sensor_msgs::Image toROSImageMsg(cv::Mat frame, uint32_t sequence,
 
 namespace spinnaker_driver_ros {
 
-void SyncedStereoNodelet::onInit() {
+void HardwareSyncedStereoNodelet::onInit() {
   ros::NodeHandle nh = getNodeHandle();
   image_transport::ImageTransport image_t(nh);
   // Initialize Spinnaker handles
@@ -99,7 +99,7 @@ void SyncedStereoNodelet::onInit() {
   // Setup Subscribers
   trigger_time_stamp_sub =
       nh.subscribe("/mavros/cam_imu_sync/cam_imu_stamp", 100,
-                   &SyncedStereoNodelet::triggerStampCallback, this);
+                   &HardwareSyncedStereoNodelet::triggerStampCallback, this);
 
   // Configure cameras and trigger
   if (fps > 1.0 / (1.0e-6 * exp + 0.014)) {
@@ -111,10 +111,10 @@ void SyncedStereoNodelet::onInit() {
   frame_count = 0;
 
   frame_grab_worker =
-      std::thread(&SyncedStereoNodelet::publishImagesSync, this);
+      std::thread(&HardwareSyncedStereoNodelet::publishImagesSync, this);
 }
 
-SyncedStereoNodelet::~SyncedStereoNodelet() {
+HardwareSyncedStereoNodelet::~HardwareSyncedStereoNodelet() {
   triggerControl(false, true);
   frame_grab_worker.join();
   l_camera->disconnect();
@@ -124,7 +124,7 @@ SyncedStereoNodelet::~SyncedStereoNodelet() {
   system->ReleaseInstance();
 }
 
-void SyncedStereoNodelet::loadParameters() {
+void HardwareSyncedStereoNodelet::loadParameters() {
   ros::NodeHandle nh_lcl("~");
 
   nh_lcl.param("frame_rate", fps, 1.0);
@@ -164,7 +164,7 @@ void SyncedStereoNodelet::loadParameters() {
     ROS_ERROR("Could not find right camera calibration file");
 }
 
-void SyncedStereoNodelet::publishImagesSync() {
+void HardwareSyncedStereoNodelet::publishImagesSync() {
   // Make sure trigger is reset and stopped before starting the cameras
   while (!triggerControl(false, true))
   ROS_INFO("HW Trigger was reset");
@@ -227,7 +227,7 @@ void SyncedStereoNodelet::publishImagesSync() {
   }
 }
 
-bool SyncedStereoNodelet::triggerControl(bool enable, bool reset) {
+bool HardwareSyncedStereoNodelet::triggerControl(bool enable, bool reset) {
   mavros_msgs::CommandTriggerControl srv;
   srv.request.trigger_enable = enable;
   srv.request.sequence_reset = reset;
@@ -236,7 +236,7 @@ bool SyncedStereoNodelet::triggerControl(bool enable, bool reset) {
   return srv.response.success;
 }
 
-bool SyncedStereoNodelet::triggerConfig(double fps) {
+bool HardwareSyncedStereoNodelet::triggerConfig(double fps) {
   mavros_msgs::CommandTriggerInterval srv;
   srv.request.cycle_time = 1000.0 / fps;
 
@@ -244,7 +244,7 @@ bool SyncedStereoNodelet::triggerConfig(double fps) {
   return srv.response.success;
 }
 
-void SyncedStereoNodelet::triggerStampCallback(
+void HardwareSyncedStereoNodelet::triggerStampCallback(
     const mavros_msgs::CamIMUStamp &msg) {
   timestamp_buffer.emplace_back(msg);
 
@@ -254,7 +254,7 @@ void SyncedStereoNodelet::triggerStampCallback(
   }
 }
 
-bool SyncedStereoNodelet::getTimestamp(uint32_t frame_index,
+bool HardwareSyncedStereoNodelet::getTimestamp(uint32_t frame_index,
                                        ros::Time &timestamp) {
   if (timestamp_buffer.size() < 1) {
     return false;

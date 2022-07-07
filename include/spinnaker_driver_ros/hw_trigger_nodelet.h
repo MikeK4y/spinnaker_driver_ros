@@ -23,11 +23,11 @@
 
 namespace spinnaker_driver_ros {
 
-class SyncedStereoNodelet : public nodelet::Nodelet {
+class HardwareSyncedStereoNodelet : public nodelet::Nodelet {
  public:
   /** TODO: Add exceptions to stop constructor if something's not right */
-  SyncedStereoNodelet() {}
-  ~SyncedStereoNodelet();
+  HardwareSyncedStereoNodelet() {}
+  ~HardwareSyncedStereoNodelet();
 
  private:
   virtual void onInit();

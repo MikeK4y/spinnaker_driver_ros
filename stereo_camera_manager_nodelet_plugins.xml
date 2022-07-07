@@ -1,9 +1,0 @@
-<library path="lib/libcamera_manager_nodelet">
-  <class name="spinnaker_driver_ros/stereo_camera_manager_nodelet"
-         type="spinnaker_driver_ros::StereoCameraManagerNodelet"
-         base_class_type="nodelet::Nodelet">
-    <description>
-      Stereo Camera Manager ROS nodelet.
-    </description>
-  </class>
-</library>

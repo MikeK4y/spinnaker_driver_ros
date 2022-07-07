@@ -1,10 +1,10 @@
 # Camera Serial Numbers
-left_camera_serial: 21119620
-right_camera_serial: 21408379
+left_camera_serial: 17473641
+right_camera_serial: 17403017
 
 # Camera Calibration files
-left_camera_info_url: package://spinnaker_driver_ros/cfg/left_camera_8MP.yaml
-right_camera_info_url: package://spinnaker_driver_ros/cfg/right_camera_8MP.yaml
+left_camera_info_url: package://spinnaker_driver_ros/cfg/left_camera_5MP.yaml
+right_camera_info_url: package://spinnaker_driver_ros/cfg/right_camera_5MP.yaml
 
 # Camera Configuration
 # Can be reconfigured in SW triggering

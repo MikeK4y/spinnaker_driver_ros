@@ -1,4 +1,4 @@
-#include "spinnaker_driver_ros/stereo_camera_manager_nodelet.h"
+#include "spinnaker_driver_ros/sw_trigger_nodelet.h"
 
 #include <functional>
 
@@ -8,7 +8,7 @@
 #include "cv_bridge/cv_bridge.h"
 #include "std_msgs/Float32.h"
 
-PLUGINLIB_EXPORT_CLASS(spinnaker_driver_ros::StereoCameraManagerNodelet,
+PLUGINLIB_EXPORT_CLASS(spinnaker_driver_ros::SoftwareSyncedStereoNodelet,
                        nodelet::Nodelet);
 
 inline sensor_msgs::Image toROSImageMsg(cv::Mat frame, ros::Time timestamp) {
@@ -26,7 +26,7 @@ inline sensor_msgs::Image toROSImageMsg(cv::Mat frame, ros::Time timestamp) {
 
 namespace spinnaker_driver_ros {
 
-void StereoCameraManagerNodelet::onInit() {
+void SoftwareSyncedStereoNodelet::onInit() {
   ros::NodeHandle nh = getNodeHandle();
   image_transport::ImageTransport image_t(nh);
   // Initialize Spinnaker handles
@@ -82,7 +82,7 @@ void StereoCameraManagerNodelet::onInit() {
   dynamic_reconfigure::Server<
       spinnaker_driver_ros::stereoCameraParametersConfig>::CallbackType
       config_cb =
-          boost::bind(&StereoCameraManagerNodelet::dynamicReconfigureCallback,
+          boost::bind(&SoftwareSyncedStereoNodelet::dynamicReconfigureCallback,
                       this, _1, _2);
   config_server.setCallback(config_cb);
 
@@ -99,10 +99,10 @@ void StereoCameraManagerNodelet::onInit() {
   cam_gain_pub = nh.advertise<std_msgs::Float32>("camera_gain", 1);
 
   frame_grab_worker =
-      std::thread(&StereoCameraManagerNodelet::publishImagesSync, this);
+      std::thread(&SoftwareSyncedStereoNodelet::publishImagesSync, this);
 }
 
-StereoCameraManagerNodelet::~StereoCameraManagerNodelet() {
+SoftwareSyncedStereoNodelet::~SoftwareSyncedStereoNodelet() {
   frame_grab_worker.join();
   l_camera->disconnect();
   r_camera->disconnect();
@@ -111,7 +111,7 @@ StereoCameraManagerNodelet::~StereoCameraManagerNodelet() {
   system->ReleaseInstance();
 }
 
-void StereoCameraManagerNodelet::loadParameters() {
+void SoftwareSyncedStereoNodelet::loadParameters() {
   ros::NodeHandle nh_lcl("~");
 
   nh_lcl.param("frame_rate", current_config.fps, 1.0);
@@ -152,7 +152,7 @@ void StereoCameraManagerNodelet::loadParameters() {
     ROS_ERROR("Could not find right camera calibration file");
 }
 
-void StereoCameraManagerNodelet::publishImagesSync() {
+void SoftwareSyncedStereoNodelet::publishImagesSync() {
   cv::Mat l_cap, r_cap;
   ros::Time l_time, r_time;
   std_msgs::Float32 exp_msg, gain_msg;
@@ -218,7 +218,7 @@ void StereoCameraManagerNodelet::publishImagesSync() {
   }
 }
 
-void StereoCameraManagerNodelet::dynamicReconfigureCallback(
+void SoftwareSyncedStereoNodelet::dynamicReconfigureCallback(
     spinnaker_driver_ros::stereoCameraParametersConfig& config,
     uint32_t level) {
   current_config.resize_factor = config.resize_factor;

@@ -24,11 +24,11 @@
 
 namespace spinnaker_driver_ros {
 
-class StereoCameraManagerNodelet : public nodelet::Nodelet {
+class SoftwareSyncedStereoNodelet : public nodelet::Nodelet {
  public:
   /** TODO: Add exceptions to stop constructor if something's not right */
-  StereoCameraManagerNodelet() {}
-  ~StereoCameraManagerNodelet();
+  SoftwareSyncedStereoNodelet() {}
+  ~SoftwareSyncedStereoNodelet();
 
  private:
   virtual void onInit();

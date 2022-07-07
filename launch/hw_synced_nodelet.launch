@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="nodelet" type="nodelet" name="standalone_nodelet"  args="manager" output="screen"/>
+
+  <node name="hw_trigger_nodelet_runnable" pkg="spinnaker_driver_ros" type="hw_trigger_nodelet_runnable" output="screen" required="true">
+    <rosparam command="load" file="$(find spinnaker_driver_ros)/cfg/stereo_config_8MP.yaml"/>
+  </node>
+</launch>

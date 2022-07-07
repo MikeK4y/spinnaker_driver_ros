@@ -1,9 +1,0 @@
-<library path="lib/libsynced_stereo_nodelet">
-  <class name="spinnaker_driver_ros/synced_stereo_nodelet"
-         type="spinnaker_driver_ros::SyncedStereoNodelet"
-         base_class_type="nodelet::Nodelet">
-    <description>
-      Synced Stereo ROS nodelet.
-    </description>
-  </class>
-</library>

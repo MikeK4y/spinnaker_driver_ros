@@ -62,14 +62,11 @@ void SyncedStereoNodelet::onInit() {
     exit(-1);
   }
 
+  // Configure cameras
   l_camera->configure(exp, gain, l_camera->getFPSmax());
   r_camera->configure(exp, gain, r_camera->getFPSmax());
 
-  // Enable camera triggering
-  l_camera->enableTriggering(true);
-  r_camera->enableTriggering(true);
-
-  // Start acquisition
+  // Make sure we can start acquisition
   if (l_camera->startAcquisition()) std::cout << "Left camera connected\n";
   if (r_camera->startAcquisition()) std::cout << "Right camera connected\n";
   if (!l_camera->getAcquisition() || !r_camera->getAcquisition()) {
@@ -77,16 +74,15 @@ void SyncedStereoNodelet::onInit() {
     exit(-1);
   }
 
+  l_camera->stopAcquisition();
+  r_camera->stopAcquisition();
+
   // Setup Services
   pixhawk_trigger_ctrl = nh.serviceClient<mavros_msgs::CommandTriggerControl>(
       "/mavros/cmd/trigger_control");
   pixhawk_trigger_config =
       nh.serviceClient<mavros_msgs::CommandTriggerInterval>(
           "/mavros/cmd/trigger_interval");
-
-  // Until I figure out how to call the destructor make sure the trigger is off
-  // and reset
-  triggerControl(false, true);
 
   // Setup Publishers
   l_image_pub = image_t.advertise("left_camera/image_raw", 1);
@@ -98,6 +94,7 @@ void SyncedStereoNodelet::onInit() {
       nh.advertise<sensor_msgs::CameraInfo>("right_camera/camera_info", 1);
 
   cam_exp_pub = nh.advertise<std_msgs::Float32>("camera_exposure", 1);
+  cam_gain_pub = nh.advertise<std_msgs::Float32>("camera_gain", 1);
 
   // Setup Subscribers
   trigger_time_stamp_sub =
@@ -130,14 +127,14 @@ SyncedStereoNodelet::~SyncedStereoNodelet() {
 void SyncedStereoNodelet::loadParameters() {
   ros::NodeHandle nh_lcl("~");
 
-  int l_serial, r_serial;
-  std::string l_camera_info_file, r_camera_info_file;
-
   nh_lcl.param("frame_rate", fps, 1.0);
   nh_lcl.param("exposure_time", exp, 1.0);
   nh_lcl.param("gain", gain, 0.0);
 
   buffer_size = size_t(2.0 * fps);
+
+  int l_serial, r_serial;
+  std::string l_camera_info_file, r_camera_info_file;
 
   nh_lcl.param("left_camera_serial", l_serial, 01234567);
   nh_lcl.param("right_camera_serial", r_serial, 01234567);
@@ -168,22 +165,33 @@ void SyncedStereoNodelet::loadParameters() {
 }
 
 void SyncedStereoNodelet::publishImagesSync() {
-  // Image handles
-  std_msgs::Float32 exp_msg;
+  // Make sure trigger is reset and stopped before starting the cameras
+  while (!triggerControl(false, true))
+  ROS_INFO("HW Trigger was reset");
+
+  // Enable camera triggering
+  l_camera->enableTriggering(true);
+  r_camera->enableTriggering(true);
+
+  // Start Acquisition
+  l_camera->startAcquisition();
+  r_camera->startAcquisition();
+
+  std_msgs::Float32 exp_msg, gain_msg;
   cv::Mat l_cap, r_cap;
-  ros::Time l_time, r_time;
+
   // Start triggering
   if (triggerControl(true, true)) {
     while (ros::ok()) {
       std::future<bool> l_image_grab, r_image_grab;
       {
-        l_image_grab = std::async(
-            std::launch::async, &SpinnakerCamera::grabFrame, l_camera,
-            std::ref(l_cap), 1000);
+        l_image_grab =
+            std::async(std::launch::async, &SpinnakerCamera::grabFrame,
+                       l_camera, std::ref(l_cap), 1000);
 
-        r_image_grab = std::async(
-            std::launch::async, &SpinnakerCamera::grabFrame, r_camera,
-            std::ref(r_cap), 1000);
+        r_image_grab =
+            std::async(std::launch::async, &SpinnakerCamera::grabFrame,
+                       r_camera, std::ref(r_cap), 1000);
       }
 
       if (l_image_grab.get() & r_image_grab.get()) {
@@ -199,8 +207,15 @@ void SyncedStereoNodelet::publishImagesSync() {
           r_cam_info.header.seq = frame_count;
           l_cam_info_pub.publish(l_cam_info);
           r_cam_info_pub.publish(r_cam_info);
+
+          // Publish current exposure
           exp_msg.data = exp;
           cam_exp_pub.publish(exp_msg);
+
+          // Publish current gain;
+          gain_msg.data = gain;
+          cam_gain_pub.publish(gain_msg);
+
         } else {
           ROS_ERROR("Dropping frame! Could not find the timestamp");
         }

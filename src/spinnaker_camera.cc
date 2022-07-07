@@ -4,8 +4,9 @@
 
 SpinnakerCamera::SpinnakerCamera(std::string serial, std::string id)
     : acquisition_started(false), camera_serial(serial), camera_id(id) {
-  // Default BFS to true
+  // Default BFS and HW trigger to true
   is_BFS = true;
+  is_HW_trigger = true;
 }
 
 SpinnakerCamera::~SpinnakerCamera() {
@@ -34,7 +35,8 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list,
     return false;
   }
 
-  // Check Camera model
+  // Update camera model and trigger type
+  is_HW_trigger = HW_trigger;
   Spinnaker::GenApi::CStringPtr device_name =
       device_node_map->GetNode("DeviceModelName");
   std::string model_name(device_name->ToString());
@@ -85,7 +87,7 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list,
   if (setFeature(node_map, "TriggerSelector", trigger_selector_mode))
     std::cout << "Trigger Selector set to Frame Start\n";
 
-  if (HW_trigger) {
+  if (is_HW_trigger) {
     std::string trigger_source = "Line0";
     std::string trigger_activation = "RisingEdge";
 
@@ -101,16 +103,6 @@ bool SpinnakerCamera::connect(Spinnaker::CameraList camera_list,
       std::cout << trigger_source << " was set as the trigger source\n";
 
     software_trigger_ptr = node_map->GetNode("TriggerSoftware");
-
-    // if (!Spinnaker::GenApi::IsAvailable(software_trigger_ptr)) {
-    //   std::cerr << "Software trigger is not Available\n";
-    //   return false;
-    // }
-
-    // if (!Spinnaker::GenApi::IsWritable(software_trigger_ptr)) {
-    //   std::cerr << "Software trigger is not Writable\n";
-    //   return false;
-    // }
   }
 
   if (setFeature(node_map, "AcquisitionMode", acquisition_mode))
@@ -168,6 +160,15 @@ void SpinnakerCamera::enableTriggering(bool enable) {
 
   if (setFeature(node_map, "TriggerMode", trigger_mode))
     std::cout << "Triggering set to " << trigger_mode << "\n";
+
+  // If SW trigger, check that it is available
+  if (enable && !is_HW_trigger) {
+    if (!Spinnaker::GenApi::IsAvailable(software_trigger_ptr))
+      std::cerr << "Software trigger is not Available\n";
+
+    if (!Spinnaker::GenApi::IsWritable(software_trigger_ptr))
+      std::cerr << "Software trigger is not Writable\n";
+  }
 }
 
 void SpinnakerCamera::softwareTrigger() { software_trigger_ptr->Execute(); }

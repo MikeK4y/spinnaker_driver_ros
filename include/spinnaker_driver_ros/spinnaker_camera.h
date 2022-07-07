@@ -28,7 +28,7 @@ class SpinnakerCamera {
    * @param HW_trigger Enable HW trigger. If false, it enables SW triggers
    * @returns True if successful
    */
-  bool connect(Spinnaker::CameraList camera_list, bool HW_trigger);
+  bool connect(Spinnaker::CameraList camera_list, bool HW_trigger = true);
 
   /** @brief Terminates connection to the camera
    * @returns True if successful
@@ -142,7 +142,7 @@ class SpinnakerCamera {
   Spinnaker::GenApi::CCommandPtr software_trigger_ptr;
 
   // Camera parameters
-  bool is_BFS;
+  bool is_BFS, is_HW_trigger;
   double fps_max, fps_min, exp_max, exp_min, gain_max, gain_min;
   std::string camera_id;
   std::string camera_serial;

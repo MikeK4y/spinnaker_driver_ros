@@ -57,12 +57,12 @@ void StereoCameraManagerNodelet::onInit() {
     exit(-1);
   }
 
-  // Set cameras fps to maximum
-  l_camera->setFPS(l_camera->getFPSmax());
-  r_camera->setFPS(r_camera->getFPSmax());
-
-  // Initialize frame rate to 1 fps
-  frame_rate = new ros::Rate(1.0);
+  // Configure camera parameters
+  l_camera->configure(current_config.exposure_time, current_config.gain,
+                      l_camera->getFPSmax());
+  r_camera->configure(current_config.exposure_time, current_config.gain,
+                      r_camera->getFPSmax());
+  frame_rate = new ros::Rate(current_config.fps);
 
   // Enable camera triggering
   l_camera->enableTriggering(true);
@@ -77,9 +77,6 @@ void StereoCameraManagerNodelet::onInit() {
   }
 
   // Setup Dynamic Reconfigure Server
-  current_config.exposure_time = 0.0;
-  current_config.fps = 1.0;
-  current_config.gain = 0.0;
   frame_count = 0;
   config_mutex.reset(new std::mutex);
   dynamic_reconfigure::Server<
@@ -117,6 +114,11 @@ StereoCameraManagerNodelet::~StereoCameraManagerNodelet() {
 void StereoCameraManagerNodelet::loadParameters() {
   ros::NodeHandle nh_lcl("~");
 
+  nh_lcl.param("frame_rate", current_config.fps, 1.0);
+  nh_lcl.param("exposure_time", current_config.exposure_time, 100.0);
+  nh_lcl.param("gain", current_config.gain, 0.0);
+  nh_lcl.param("resize_factor", current_config.resize_factor, 1.0);
+
   int l_serial, r_serial;
   std::string l_camera_info_file, r_camera_info_file;
 
@@ -151,9 +153,10 @@ void StereoCameraManagerNodelet::loadParameters() {
 }
 
 void StereoCameraManagerNodelet::publishImagesSync() {
-  // Image handles
   cv::Mat l_cap, r_cap;
   ros::Time l_time, r_time;
+  std_msgs::Float32 exp_msg, gain_msg;
+
   while (ros::ok()) {
     std::future<bool> l_image_grab, r_image_grab;
     {  // For async
@@ -161,7 +164,10 @@ void StereoCameraManagerNodelet::publishImagesSync() {
 
       // Send SW trigger to the cameras
       l_camera->softwareTrigger();
+      l_time = ros::Time::now();
+
       r_camera->softwareTrigger();
+      r_time = ros::Time::now();
 
       l_image_grab = std::async(std::launch::async, &SpinnakerCamera::grabFrame,
                                 l_camera, std::ref(l_cap), 1000);
@@ -171,33 +177,41 @@ void StereoCameraManagerNodelet::publishImagesSync() {
     }
 
     if (l_image_grab.get() & r_image_grab.get()) {
-      ros::Time avg_time = ros::Time::now();
-
-      if (resize_images) {
+      if (current_config.resize_images) {
         cv::Mat l_cap_resized, r_cap_resized;
-        cv::resize(l_cap, l_cap_resized, cv::Size(), 1.0 / resize_factor,
-                   1.0 / resize_factor, cv::INTER_LINEAR);
-        cv::resize(r_cap, r_cap_resized, cv::Size(), 1.0 / resize_factor,
-                   1.0 / resize_factor, cv::INTER_LINEAR);
+        cv::resize(l_cap, l_cap_resized, cv::Size(),
+                   1.0 / current_config.resize_factor,
+                   1.0 / current_config.resize_factor, cv::INTER_LINEAR);
+        cv::resize(r_cap, r_cap_resized, cv::Size(),
+                   1.0 / current_config.resize_factor,
+                   1.0 / current_config.resize_factor, cv::INTER_LINEAR);
 
-        l_image_pub.publish(toROSImageMsg(l_cap_resized, avg_time));
-        r_image_pub.publish(toROSImageMsg(r_cap_resized, avg_time));
-        l_cam_info_resized.header.stamp = avg_time;
+        l_image_pub.publish(toROSImageMsg(l_cap_resized, l_time));
+        r_image_pub.publish(toROSImageMsg(r_cap_resized, r_time));
+        l_cam_info_resized.header.stamp = l_time;
         l_cam_info_resized.header.seq = frame_count;
-        r_cam_info_resized.header.stamp = avg_time;
+        r_cam_info_resized.header.stamp = r_time;
         r_cam_info_resized.header.seq = frame_count;
         l_cam_info_pub.publish(l_cam_info_resized);
         r_cam_info_pub.publish(r_cam_info_resized);
       } else {
-        l_image_pub.publish(toROSImageMsg(l_cap, avg_time));
-        r_image_pub.publish(toROSImageMsg(r_cap, avg_time));
-        l_cam_info.header.stamp = avg_time;
+        l_image_pub.publish(toROSImageMsg(l_cap, l_time));
+        r_image_pub.publish(toROSImageMsg(r_cap, r_time));
+        l_cam_info.header.stamp = l_time;
         l_cam_info.header.seq = frame_count;
-        r_cam_info.header.stamp = avg_time;
+        r_cam_info.header.stamp = r_time;
         r_cam_info.header.seq = frame_count;
         l_cam_info_pub.publish(l_cam_info);
         r_cam_info_pub.publish(r_cam_info);
       }
+      // Publish current exposure
+      exp_msg.data = current_config.exposure_time;
+      cam_exp_pub.publish(exp_msg);
+
+      // Publish current gain;
+      gain_msg.data = current_config.gain;
+      cam_gain_pub.publish(gain_msg);
+
       frame_count++;
     }
     frame_rate->sleep();
@@ -207,19 +221,19 @@ void StereoCameraManagerNodelet::publishImagesSync() {
 void StereoCameraManagerNodelet::dynamicReconfigureCallback(
     spinnaker_driver_ros::stereoCameraParametersConfig& config,
     uint32_t level) {
-  resize_factor = config.resize_factor;
-  resize_images = config.resize_images;
+  current_config.resize_factor = config.resize_factor;
+  current_config.resize_images = config.resize_images;
 
-  if (resize_images) {
-    l_cam_info_resized.K[0] = l_cam_info.K[0] / resize_factor;
-    l_cam_info_resized.K[2] = l_cam_info.K[2] / resize_factor;
-    l_cam_info_resized.K[4] = l_cam_info.K[4] / resize_factor;
-    l_cam_info_resized.K[5] = l_cam_info.K[5] / resize_factor;
+  if (current_config.resize_images) {
+    l_cam_info_resized.K[0] = l_cam_info.K[0] / current_config.resize_factor;
+    l_cam_info_resized.K[2] = l_cam_info.K[2] / current_config.resize_factor;
+    l_cam_info_resized.K[4] = l_cam_info.K[4] / current_config.resize_factor;
+    l_cam_info_resized.K[5] = l_cam_info.K[5] / current_config.resize_factor;
 
-    r_cam_info_resized.K[0] = r_cam_info.K[0] / resize_factor;
-    r_cam_info_resized.K[2] = r_cam_info.K[2] / resize_factor;
-    r_cam_info_resized.K[4] = r_cam_info.K[4] / resize_factor;
-    r_cam_info_resized.K[5] = r_cam_info.K[5] / resize_factor;
+    r_cam_info_resized.K[0] = r_cam_info.K[0] / current_config.resize_factor;
+    r_cam_info_resized.K[2] = r_cam_info.K[2] / current_config.resize_factor;
+    r_cam_info_resized.K[4] = r_cam_info.K[4] / current_config.resize_factor;
+    r_cam_info_resized.K[5] = r_cam_info.K[5] / current_config.resize_factor;
   }
 
   // Update exposure time

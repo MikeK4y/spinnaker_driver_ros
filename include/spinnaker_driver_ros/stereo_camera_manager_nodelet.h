@@ -69,8 +69,6 @@ class StereoCameraManagerNodelet : public nodelet::Nodelet {
   spinnaker_driver_ros::stereoCameraParametersConfig current_config;
   std::thread frame_grab_worker;
   uint64_t frame_count;
-  double resize_factor;
-  bool resize_images;
   ros::Rate *frame_rate;
 };
 
